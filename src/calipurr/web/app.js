@@ -70,7 +70,7 @@ const ui = {
   check: null,
   viewedStage: null,
   drafts: { measured: '', material: '', note: '' },
-  skipped: new Set(),
+  answerDrafts: new Map(),
 };
 
 // 3D view
@@ -303,10 +303,13 @@ function svg(tag, attrs = {}) {
   return node;
 }
 
+function valueLabel(entry) {
+  return typeof entry.value === 'number' ? `${entry.value} ${entry.unit || 'mm'}` : entry.value;
+}
+
 function markLabel(key, entry) {
   const name = entry.name || key;
-  if (entry.value === undefined) return name;
-  return typeof entry.value === 'number' ? `${name}: ${entry.value} ${entry.unit || 'mm'}` : `${name}: ${entry.value}`;
+  return entry.value === undefined ? name : `${name}: ${valueLabel(entry)}`;
 }
 
 function syncMarks() {
@@ -322,10 +325,7 @@ function syncMarks() {
     const leader = svg('line', { class: 'leader' });
     const text = svg('text');
     text.textContent = markLabel(key, entry);
-    text.onclick = () => {
-      setActiveMark(key);
-      document.querySelector(`.field[data-key="${key}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    };
+    text.onclick = () => goToQuestion(key);
     group.append(halo, line, leader, ...ends, text);
     return { entry, active, group, halo, line, leader, ends, text };
   });
@@ -335,7 +335,6 @@ function syncMarks() {
 function setActiveMark(key) {
   ui.activeMark = key;
   syncMarks();
-  document.querySelectorAll('.field[data-key]').forEach((node) => node.classList.toggle('active', node.dataset.key === key));
 }
 
 function placeMarks(locate, width) {
@@ -578,13 +577,6 @@ function renderBowl() {
     ? 'Nothing asked yet.'
     : missing ? `${missing} required answer${missing > 1 ? 's' : ''} to go.` : 'Bowl full. Emily is purring.';
 
-  $('fields').replaceChildren(...params.map(([key, entry]) => {
-    const node = fieldNode(key, entry);
-    node.dataset.key = key;
-    node.classList.toggle('active', key === ui.activeMark);
-    if (entry.at) node.querySelector('.title').after(showOnPicture(key, entry));
-    return node;
-  }));
   const build = ui.state.build;
   const buildNode = $('buildstatus');
   buildNode.hidden = !build.configured;
@@ -593,14 +585,6 @@ function renderBowl() {
     buildNode.replaceChildren(h('b', {}, 'Rebuild'), h('div', {}, text));
     if (build.ok === false) buildNode.append(h('pre', { class: 'buildlog' }, build.output));
   }
-}
-
-function showOnPicture(key, entry) {
-  return h('button', { type: 'button', class: 'linkish', onclick: () => {
-    if (ui.file !== entry.show) selectFile(entry.show);
-    setActiveMark(key);
-    stage.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  } }, 'Show on picture');
 }
 
 function answerInput(key, entry, id) {
@@ -617,44 +601,9 @@ function answerValue(node) {
   return picked ? picked.value : node.value ?? '';
 }
 
-function textFieldNode(key, entry) {
-  const input = answerInput(key, entry, `f-${key}`);
-  input.onchange = () => act('/api/params', { key, value: answerValue(input) });
-  return h('div', { class: 'field' },
-    h('label', { class: 'title', for: `f-${key}` }, entry.name || key, badge(entry)),
-    h('p', {}, entry.ask || ''),
-    input,
-  );
-}
-
 function badge(entry) {
   const optional = entry.status === 'needed' && entry.required === false;
   return h('span', { class: `badge ${optional ? 'optional' : entry.status}` }, optional ? 'optional' : entry.status);
-}
-
-function fieldNode(key, entry) {
-  if (entry.kind === 'text' || entry.kind === 'choice') return textFieldNode(key, entry);
-  const input = h('input', { id: `f-${key}`, type: 'number', min: '0', step: 'any', value: entry.value ?? '', 'aria-label': `${entry.name || key} in ${entry.unit || 'mm'}` });
-  const status = h('select', { 'aria-label': `How you know ${entry.name || key}` },
-    h('option', { value: 'measured' }, 'Measured'), h('option', { value: 'assumed' }, 'Assumed'));
-  if (entry.status === 'assumed') status.value = 'assumed';
-  const commit = () => {
-    const changedValue = String(entry.value ?? '') !== input.value;
-    const changedStatus = entry.status !== 'needed' && entry.status !== status.value;
-    if (changedValue || (changedStatus && input.value !== '')) {
-      act('/api/params', { key, value: input.value, status: status.value });
-    }
-  };
-  input.onchange = commit;
-  status.onchange = commit;
-  const note = entry.note ? h('p', {}, entry.note) : null;
-  return h('div', { class: 'field' },
-    h('label', { class: 'title', for: `f-${key}` }, entry.name || key, badge(entry)),
-    h('p', {}, entry.ask || ''),
-    h('div', { class: 'row' }, input, h('span', {}, entry.unit || 'mm'), status),
-    note,
-    gaugeForm(key, entry),
-  );
 }
 
 function gaugeForm(key, entry) {
@@ -679,52 +628,130 @@ function gaugeForm(key, entry) {
   );
 }
 
-function emilyCard(variant, kicker, title, ...rest) {
-  return h('div', { class: `nextcard ${variant}` },
-    h('img', { src: '/logo.svg', alt: '' }),
-    h('div', { class: 'body' }, h('div', { class: 'kicker' }, kicker), h('h2', {}, title), ...rest));
+function nextUnanswered(afterKey) {
+  const params = Object.entries(ui.state.params);
+  const start = params.findIndex(([key]) => key === afterKey) + 1;
+  const open = [...params.slice(start), ...params.slice(0, start)].filter(([, e]) => e.status === 'needed');
+  return (open.find(([, e]) => e.required !== false) || open[0])?.[0] ?? null;
 }
 
-function questionCard(key, entry, total) {
+function goToQuestion(key) {
+  ui.currentQuestion = key;
+  renderCarousel();
+}
+
+function questionNode(key, entry, position, total) {
   const id = `q-${key}`;
+  const keys = Object.keys(ui.state.params);
+  const step = (by) => goToQuestion(keys[(position - 1 + by + total) % total]);
   let control = answerInput(key, entry, id);
   let status = null;
   if (!control) {
-    control = h('input', { id, type: 'number', min: '0', step: 'any', 'aria-label': entry.name || key });
+    control = h('input', { id, type: 'number', min: '0', step: 'any', 'aria-label': `${entry.name || key} in ${entry.unit || 'mm'}`, value: entry.value ?? '' });
     status = h('select', { 'aria-label': 'How you know this' }, h('option', { value: 'measured' }, 'Measured'), h('option', { value: 'assumed' }, 'Just a guess'));
+    if (entry.status === 'assumed') status.value = 'assumed';
+  }
+  if (control.matches('input, textarea')) {
+    if (ui.answerDrafts.has(key)) control.value = ui.answerDrafts.get(key);
+    control.addEventListener('input', () => ui.answerDrafts.set(key, control.value));
   }
   const save = async () => {
     const value = answerValue(control);
     if (!value) {
-      toast('Enter an answer, or skip this one for now.');
+      toast(entry.status === 'needed' ? 'Enter an answer, or use the arrows to come back to this later.' : 'Enter an answer, or use Clear answer.');
       return;
     }
-    await act('/api/params', { key, value, status: status ? status.value : undefined });
-    document.querySelector('#next textarea, #next input:not([type=radio])')?.focus();
+    if (String(entry.value ?? '') !== value || (status && entry.status !== status.value)) {
+      const saved = await act('/api/params', { key, value, status: status ? status.value : undefined });
+      if (!saved) return;
+      ui.answerDrafts.delete(key);
+    }
+    const next = nextUnanswered(key);
+    if (next) goToQuestion(next);
+    document.querySelector('#question textarea, #question input:not([type=radio])')?.focus();
   };
   if (entry.kind !== 'text') control.addEventListener('keydown', (event) => { if (event.key === 'Enter') save(); });
-  return emilyCard('', `EMILY NEEDS YOU: ${total} question${total > 1 ? 's' : ''} left`, entry.name || key,
-    h('div', { class: 'progress', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': ui.requiredTotal, 'aria-valuenow': ui.requiredTotal - total },
-      h('i', { style: `width:${ui.requiredTotal ? (ui.requiredTotal - total) / ui.requiredTotal * 100 : 0}%` })),
+  const answered = entry.status !== 'needed';
+  const seePicture = entry.show ? h('button', { type: 'button', class: 'linkish', onclick: () => selectFile(entry.show) }, 'Show its picture') : null;
+  const clear = answered ? h('button', { type: 'button', class: 'linkish', onclick: () => {
+    ui.answerDrafts.delete(key);
+    act('/api/params', { key, value: '' });
+  } }, 'Clear answer') : null;
+  return h('div', {},
+    h('div', { class: 'qhead' },
+      h('button', { type: 'button', class: 'arrow', 'aria-label': 'Previous question', onclick: () => step(-1) }, '‹'),
+      h('h2', {}, entry.name || key),
+      badge(entry),
+      h('span', { class: 'count' }, `${position} of ${total}`),
+      h('button', { type: 'button', class: 'arrow', 'aria-label': 'Next question', onclick: () => step(1) }, '›')),
     h('p', { class: 'ask' }, entry.ask || ''),
     entry.why ? h('p', { class: 'why' }, entry.why) : null,
     status && !entry.at ? h('p', { class: 'why' }, "This one isn't marked on a picture.") : null,
-    h('div', { class: 'row' }, control, status ? h('span', {}, entry.unit || 'mm') : null, status),
-    h('div', { class: 'actions' },
-      h('button', { type: 'button', class: 'primary', onclick: save }, total > 1 ? 'Save and next' : 'Save'),
-      h('button', { type: 'button', class: 'linkish', onclick: () => {
-        ui.skipped.add(key);
-        renderNext();
-      } }, 'Skip for now'),
-    ));
+    entry.note ? h('p', { class: 'why' }, entry.note) : null,
+    h('div', { class: 'answer' },
+      control,
+      status ? h('span', {}, entry.unit || 'mm') : null,
+      status,
+      h('button', { type: 'button', class: 'primary', onclick: save }, nextUnanswered(key) ? 'Save and next' : 'Save'),
+      seePicture,
+      clear),
+    status ? gaugeForm(key, entry) : null);
+}
+
+function chipNode(key, entry) {
+  const label = entry.value === undefined ? `${entry.name || key}: not answered` : markLabel(key, entry);
+  const optional = entry.status === 'needed' && entry.required === false;
+  return h('button', {
+    type: 'button',
+    class: `chip ${optional ? 'optional' : entry.status}`,
+    'aria-current': key === ui.currentQuestion ? 'true' : null,
+    'aria-label': label,
+    title: label,
+    onclick: () => goToQuestion(key),
+  }, entry.name || key);
+}
+
+function renderCarousel() {
+  const params = Object.entries(ui.state.params);
+  $('carousel').hidden = !params.length;
+  if (!params.length) {
+    ui.currentQuestion = null;
+    ui.shownQuestion = null;
+    return;
+  }
+  const open = nextUnanswered(null);
+  const requiredOpen = params.some(([, e]) => e.status === 'needed' && e.required !== false);
+  // An agent asking something new after everything was answered should bring it straight up.
+  if (!ui.state.params[ui.currentQuestion] || (ui.finished && requiredOpen)) ui.currentQuestion = open ?? params[0][0];
+  ui.finished = !requiredOpen;
+  const key = ui.currentQuestion;
+  const entry = ui.state.params[key];
+  $('chips').replaceChildren(...params.map(([k, e]) => chipNode(k, e)));
+  // Redrawing the same question would wipe a half-typed answer.
+  const shown = JSON.stringify([key, entry, open]);
+  if (ui.shownQuestion !== shown) {
+    ui.shownQuestion = shown;
+    $('question').replaceChildren(questionNode(key, entry, params.findIndex(([k]) => k === key) + 1, params.length));
+  }
+  if (ui.askedKey !== key) {
+    ui.askedKey = key;
+    if (entry.show && entry.show !== ui.file) selectFile(entry.show);
+    setActiveMark(key);
+  }
+}
+
+function emilyCard(variant, kicker, title, ...rest) {
+  return h('div', { class: `nextcard ${variant}` },
+    h('img', { src: '/logo.svg', alt: '' }),
+    h('span', { class: 'kicker' }, kicker),
+    h('h2', {}, title),
+    ...rest);
 }
 
 function renderNext() {
-  const params = Object.entries(ui.state.params);
-  const required = params.filter(([, e]) => e.required !== false);
-  ui.requiredTotal = required.length;
-  const needed = required.filter(([, e]) => e.status === 'needed');
-  const optional = params.filter(([, e]) => e.required === false && e.status === 'needed');
+  const params = Object.values(ui.state.params);
+  const needed = params.filter((e) => e.required !== false && e.status === 'needed').length;
+  const optional = params.filter((e) => e.required === false && e.status === 'needed').length;
   const node = $('next');
   const copy = (opening) => {
     const text = `${opening} Read my answers and comments with: calipurr bowl --json --project "${ui.state.root}" and calipurr dots --json --project "${ui.state.root}"`;
@@ -733,52 +760,16 @@ function renderNext() {
       toast('Copied. Paste it to your agent.', true);
     } }, 'Copy a message for your agent');
   };
-  if (needed.length) {
-    const pending = needed.filter(([key]) => !ui.skipped.has(key));
-    if (!pending.length) {
-      ui.shownQuestion = null;
-      node.replaceChildren(emilyCard('', `EMILY NEEDS YOU: ${needed.length} skipped`, 'You skipped the rest for now',
-        h('p', { class: 'ask' }, `Emily can't move on until ${needed.length === 1 ? 'this is' : 'these are'} answered: ${needed.map(([, e]) => e.name).join(', ')}.`),
-        h('div', { class: 'actions' }, h('button', { type: 'button', class: 'primary', onclick: () => {
-          ui.skipped.clear();
-          renderNext();
-        } }, 'Go back to them')),
-      ));
-      return;
-    }
-    const [key, entry] = pending[0];
-    // Redrawing the same question would wipe a half-typed answer.
-    const shown = JSON.stringify([key, entry, needed.length]);
-    if (ui.shownQuestion === shown) return;
-    ui.shownQuestion = shown;
-    node.replaceChildren(questionCard(key, entry, needed.length));
-    if (ui.askedKey !== key) {
-      ui.askedKey = key;
-      if (entry.show && entry.show !== ui.file) selectFile(entry.show);
-      setActiveMark(key);
-    }
-    return;
+  if (needed) {
+    node.replaceChildren(emilyCard('', 'EMILY NEEDS YOU', `${needed} question${needed > 1 ? 's' : ''} left, just below the picture`));
+  } else if (ui.state.next) {
+    node.replaceChildren(emilyCard('', 'YOUR NEXT STEP', ui.state.next, copy(`I finished this step: ${ui.state.next}`)));
+  } else if (params.length) {
+    const extra = optional ? h('span', { class: 'why' }, `${optional} optional question${optional > 1 ? 's' : ''} left, if you have time.`) : null;
+    node.replaceChildren(emilyCard('done', "THAT'S EVERYTHING FOR NOW", 'Your turn is done. Tell your agent you finished.', extra, copy("I answered Emily's questions.")));
+  } else {
+    node.replaceChildren(emilyCard('waiting', 'NOTHING NEEDED', 'Emily has no questions right now.'));
   }
-  if (ui.shownQuestion) ui.activeMark = null;
-  ui.askedKey = null;
-  ui.shownQuestion = null;
-  if (ui.state.next) {
-    node.replaceChildren(emilyCard('', 'YOUR NEXT STEP', ui.state.next,
-      h('p', { class: 'why' }, 'Your agent is waiting on this. Tell it when you finish.'),
-      h('div', { class: 'actions' }, copy(`I finished this step: ${ui.state.next}`))));
-    return;
-  }
-  if (params.length) {
-    const extra = optional.length ? h('p', { class: 'why' }, `${optional.length} optional question${optional.length > 1 ? 's' : ''} left in the food bowl, if you have time.`) : null;
-    node.replaceChildren(emilyCard('done', "THAT'S EVERYTHING FOR NOW", 'Your turn is done. Tell your agent you finished.',
-      h('p', { class: 'ask' }, "Your agent can't see this page change on its own, so let it know."),
-      extra,
-      h('div', { class: 'actions' }, copy("I answered Emily's questions.")),
-    ));
-    return;
-  }
-  node.replaceChildren(emilyCard('waiting', 'NOTHING NEEDED', 'Emily has no questions right now.',
-    h('p', { class: 'why' }, 'Your agent can ask here with calipurr meow.')));
 }
 
 function renderLives() {
@@ -982,6 +973,7 @@ function renderAll() {
   renderMachines();
   renderFiles();
   renderNext();
+  renderCarousel();
   renderBowl();
   renderLives();
   renderComments();
@@ -1016,7 +1008,8 @@ async function refresh(force = false) {
   const response = await fetch('/api/state');
   const text = await response.text();
   if (!force && text === ui.stateText) return;
-  const typing = !force && document.activeElement?.matches('input, select, textarea');
+  // The question's own fields are exempt: it only redraws if the question itself changes.
+  const typing = !force && document.activeElement?.matches('input, select, textarea') && !$('question').contains(document.activeElement);
   if (typing) return;
   ui.stateText = text;
   ui.state = JSON.parse(text);

@@ -11,30 +11,45 @@ header small{color:#c9c5ba}
 .tag select{font:inherit;border:0;border-radius:6px;padding:2px 4px}
 #toast{background:#f9dfdc;color:#6d1a15;padding:6px 18px;font-size:14px}
 #toast.good{background:#d8eee0;color:#1d5a37}
-.next{max-width:1500px;margin:14px auto 0;padding:0 18px}
-.nextcard{display:flex;gap:14px;align-items:flex-start;background:#fff8dc;border:2px solid #e9c74e;border-radius:12px;padding:12px 14px}
+.next{max-width:1500px;margin:10px auto 0;padding:0 18px}
+.nextcard{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;background:#fff8dc;border:2px solid #e9c74e;border-radius:12px;padding:6px 12px}
 .nextcard.done{background:#e9f6ee;border-color:#2d7a4e}
 .nextcard.waiting{background:#fff;border-color:var(--line)}
-.nextcard img{width:52px;height:52px;flex:none}
-.nextcard .body{flex:1;min-width:0}
+.nextcard img{width:32px;height:32px;flex:none}
 .nextcard .kicker{font-size:12px;font-weight:700;letter-spacing:.02em;color:#6f5610}
 .nextcard.done .kicker{color:#1d5a37}
-.nextcard h2{font-size:18px;margin:2px 0;font-weight:700}
-.nextcard .ask{margin:2px 0;font-size:15px}
-.nextcard .why{margin:2px 0 8px;font-size:13px;color:var(--muted)}
-.nextcard input[type=number],.nextcard input[type=text],.nextcard textarea,.nextcard select{font:inherit;padding:6px 8px;border:1px solid #b9b19c;border-radius:8px;background:#fff}
-.nextcard input[type=number]{width:120px}
-.nextcard textarea{width:min(560px,100%);min-height:44px}
-.nextcard .choices{display:flex;flex-wrap:wrap;gap:6px}
-.nextcard .choices label{border:1px solid #b9b19c;background:#fff;border-radius:999px;padding:5px 12px;cursor:pointer}
-.nextcard .choices label:has(input:checked){background:var(--ink);color:var(--paper)}
-.nextcard .choices input{position:absolute;opacity:0}
-.nextcard .choices label:has(input:focus-visible){outline:2px solid var(--red)}
-.nextcard .actions{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
-.nextcard .primary{font-size:14px;padding:7px 14px}
-.progress{height:8px;background:#efe6c4;border-radius:99px;overflow:hidden;margin:6px 0 8px;max-width:560px}
-.progress i{display:block;height:100%;background:#a8693a}
-main{display:grid;grid-template-columns:190px minmax(0,1fr) 300px;gap:14px;padding:14px 18px;max-width:1500px;margin:auto}
+.nextcard h2{font-size:16px;margin:0;font-weight:700}
+.nextcard .why{font-size:13px;color:var(--muted)}
+#carousel{margin-top:10px}
+.qhead{display:flex;align-items:center;gap:8px}
+.qhead h2{font-size:17px;margin:0;font-weight:700}
+.qhead .count{margin-left:auto;font-size:13px;color:var(--muted)}
+.arrow{font-size:20px;line-height:1;width:32px;height:32px;flex:none;background:var(--paper);border:1px solid var(--line);border-radius:8px;cursor:pointer}
+#question .ask{margin:4px 0 2px}
+#question .why{margin:0 0 2px;font-size:13px;color:var(--muted)}
+.answer{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:6px 0}
+.answer input[type=number],.answer textarea,.answer select{font:inherit;padding:6px 8px;border:1px solid #b9b19c;border-radius:8px;background:#fff}
+.answer input[type=number]{width:120px}
+.answer textarea{width:min(520px,100%);min-height:40px}
+.answer .primary{font-size:14px;padding:7px 14px}
+.choices{display:flex;flex-wrap:wrap;gap:6px}
+.choices label{border:1px solid #b9b19c;background:#fff;border-radius:999px;padding:5px 12px;cursor:pointer}
+.choices label:has(input:checked){background:var(--ink);color:var(--paper)}
+.choices input{position:absolute;opacity:0}
+.choices label:has(input:focus-visible){outline:2px solid var(--red)}
+#question details{margin:0 0 6px;font-size:12px}
+#question details .row{margin-top:5px}
+#question details input{width:62px}
+#question summary{cursor:pointer;color:#8f211c}
+#chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding-top:8px;border-top:1px solid var(--line)}
+.chip{font:600 12px system-ui;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 9px;border-radius:999px;border:1.5px solid #8f5a30;background:#fff;color:#6a4222;cursor:pointer}
+.chip.optional{border-style:dashed}
+.chip.measured,.chip.answered{background:#8f5a30;color:#fff}
+.chip.measured::before,.chip.answered::before{content:"✓ "}
+.chip.assumed{background:#f4dfa8;color:#5c4510}
+.chip.assumed::before{content:"~ "}
+.chip[aria-current]{outline:2px solid #e9c74e;outline-offset:1px;box-shadow:0 0 0 4px #e9c74e55}
+main{display:grid;grid-template-columns:190px minmax(0,1fr) 240px;gap:14px;padding:14px 18px;max-width:1500px;margin:auto}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
 .middle{min-width:0}
 h2{font-size:14px;margin:0 0 8px}
@@ -74,7 +89,6 @@ button{font:inherit;color:var(--ink);cursor:pointer}
 .mark.active .span{stroke:#ffd83d;stroke-width:3}
 .mark.active circle{fill:#ffd83d}
 .mark.active text{font-size:14px;font-weight:700;stroke:#ffd83d;stroke-width:5px}
-.field.active{outline:2px solid #e9c74e;outline-offset:2px;border-radius:6px}
 .pin{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;padding:0;border-radius:50%;background:var(--red);border:2px solid #fff;color:#fff;font:700 11px system-ui;box-shadow:0 0 8px 2px #c8362f88;pointer-events:none}
 .stage.pointing .pin{pointer-events:auto;cursor:pointer}
 .dimlabel{position:absolute;transform:translate(-50%,-50%);font:600 12px ui-monospace,monospace;background:#fbf8f1d9;padding:0 4px;border-radius:4px;white-space:nowrap}
@@ -113,13 +127,6 @@ button{font:inherit;color:var(--ink);cursor:pointer}
 .field label.title{display:block;font-weight:600}
 .field p{margin:1px 0 5px;font-size:12px;color:var(--muted)}
 .field input[type=number]{width:84px}
-.field .choices{display:flex;flex-wrap:wrap;gap:2px 10px}
-.field .choices label{display:inline-flex;gap:4px;align-items:center;white-space:nowrap;font-size:13px}
-.field textarea{width:100%;font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
-.field details{margin-top:6px;font-size:12px}
-.field details .row{margin-top:5px}
-.field details input{width:62px}
-.field summary{cursor:pointer;color:#8f211c}
 .badge{font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px}
 .badge.answered{background:#d8eee0;color:#1d5a37}.badge.optional{background:#eee;color:#555}.badge.needed{background:#f9dfdc;color:#8f211c}.badge.assumed{background:#f3e8c6;color:#6f5610}.badge.measured{background:#d8eee0;color:#1d5a37}
 .lives{display:flex;gap:2px;margin-top:4px;flex-wrap:wrap}
@@ -127,5 +134,20 @@ button{font:inherit;color:var(--ink);cursor:pointer}
 .lives span{opacity:.2}
 .lives .current{outline:2px solid #e9c74e;border-radius:6px}
 pre.buildlog{white-space:pre-wrap;max-height:120px;overflow:auto;background:#f4f0e6;padding:6px;border-radius:6px;font-size:11px;margin:4px 0 0}
+/* On wide screens the page fits the window, so the picture and the question stay in view together. */
+@media(min-width:981px){
+  body{height:100vh;display:flex;flex-direction:column}
+  header,.next,#toast{flex:none}
+  .next{width:100%}
+  main{flex:1;min-height:420px;width:100%;margin:0 auto;grid-template-rows:minmax(0,1fr)}
+  main>*{min-height:0;overflow-y:auto}
+  .middle{overflow:hidden}
+  .middle>.card{height:100%;display:flex;flex-direction:column;overflow-y:auto}
+  .middle>.card>*{flex:none}
+  /* What's under the question peeks in, as a hint that this column scrolls. */
+  .middle>.card>.workspace{flex:0 0 calc(100% - 92px);display:flex;flex-direction:column}
+  .stage{flex:1 1 0;height:auto;min-height:260px}
+  #carousel{flex:none}
+}
 @media(max-width:980px){main{grid-template-columns:1fr}.tree svg{max-width:220px;margin:auto}}
 @media(prefers-reduced-motion:reduce){#stagecat{transition:none}}

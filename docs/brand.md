@@ -13,8 +13,9 @@ Each cat object does a real job, chosen because cat behavior already resembles t
 |---|---|---|---|
 | Cat tree | Project stages | Vertical navigation with a perch per stage (Measure, Model, Check, Make). Emily sits on the current one | Cats climb as things get interesting |
 | Laser dot | Point at this | Click a model or photo to pin a comment to that spot. Comments only: dimensions get marks | Everyone stares at the dot |
-| Next-step card | What Emily needs next | Asks one question at a time across the top of the page and says plainly who has the next move | The cat stares at you until you act |
-| Food bowl | Questions and answers | Every question and answer in one list, editable. The bowl fills as required answers come in | The cat tells you when something is missing |
+| Next-step banner | What Emily needs next | One line across the top that says plainly who has the next move | The cat stares at you until you act |
+| Kibble | Questions | A carousel under the picture asks one question at a time. Each question is a piece of kibble you can click, filled in once it's answered | Kibble goes in one piece at a time |
+| Food bowl | Answers so far | Fills as required answers come in | The cat tells you when something is missing |
 | Yarn ball | Rotate | Drag to rotate the model | Batting a ball around |
 | Whiskers | Clearance check | Shows whether parts and machine limits have enough room | Cats use whiskers to judge gaps |
 | Cardboard box | Fit check | Shows "If it fits, I sits" when a part fits the machine | Cats and boxes |

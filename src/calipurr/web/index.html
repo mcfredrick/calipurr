@@ -57,11 +57,17 @@
         <button id="paw" aria-pressed="false" hidden><span aria-hidden="true">🐾</span>Paw: pick a step</button>
         <button id="dims" aria-pressed="true">Show dimensions</button>
       </div>
+      <div class="workspace">
       <div class="stage" id="stage">
         <canvas id="view" aria-label="3D view of the selected model"></canvas>
         <div id="photo" hidden><img id="photoimg" alt="Selected photo"></div>
         <div id="overlay" aria-hidden="false"></div>
         <div id="empty" hidden>Drop an STL or photo in this folder and it'll appear here.</div>
+      </div>
+      <section id="carousel" aria-label="Questions from your agent" hidden>
+        <div id="question"></div>
+        <div id="chips" role="group" aria-label="All questions. Each piece of kibble is one question."></div>
+      </section>
       </div>
       <ul class="comments" id="comments" aria-label="Laser dot comments"></ul>
       <div id="report" class="report" hidden></div>
@@ -74,13 +80,12 @@
     </div>
   </section>
 
-  <aside class="card" aria-label="Questions and answers">
-    <h2>Food bowl <small>questions and answers</small></h2>
+  <aside class="card" aria-label="Progress and history">
+    <h2>Food bowl <small>answers so far</small></h2>
     <div class="bowl-wrap">
       <svg viewBox="0 0 90 56" aria-hidden="true"><defs><clipPath id="bowlclip"><path d="M12 16h66l-8 32H20z"/></clipPath></defs><path d="M12 16h66l-8 32H20z" fill="#eee7d7"/><rect id="kibble" x="0" y="48" width="90" height="0" fill="#a8693a" clip-path="url(#bowlclip)"/><path d="M12 16h66l-8 32H20z" fill="none" stroke="#c8362f" stroke-width="3"/></svg>
       <div id="bowlmsg" aria-live="polite"></div>
     </div>
-    <div id="fields"></div>
     <div id="buildstatus" class="field" hidden></div>
     <div class="field"><b>Nine lives: version history</b><div class="lives" id="lives" role="group" aria-label="Earlier versions of these values"></div></div>
     <div class="field" id="machinepanel"></div>

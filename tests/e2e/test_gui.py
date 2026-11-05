@@ -114,11 +114,11 @@ def test_dots_land_on_the_model_follow_it_and_can_be_removed(app):
 def test_full_gauge_loop_with_step_picked_on_the_model(app):
     page, project = app
     project.meow("D1", "Tube inside diameter", "Measure at two spots with calipers")
-    page.wait_for_selector("#f-D1")
+    page.wait_for_selector("#q-D1")
     assert "1 required answer" in page.inner_text("#bowlmsg")
 
-    page.locator(".field details summary").first.click()
-    form = page.locator(".field details")
+    page.locator("#question details summary").click()
+    form = page.locator("#question details")
     form.locator('input[aria-label="Smallest size"]').fill("20.3")
     form.locator('input[aria-label="Largest size"]').fill("21.1")
     form.locator("button.primary").click()
@@ -174,7 +174,7 @@ def test_full_gauge_loop_with_step_picked_on_the_model(app):
 def test_agent_edits_appear_without_reloading(app):
     page, project = app
     project.meow("H", "Height", "How much room is there?")
-    page.wait_for_selector("#f-H")
+    page.wait_for_selector("#q-H")
     project.add_dot("block.stl", [0, 0, 20], "from the agent")
     page.wait_for_selector(".pin")
     trimesh.creation.box(extents=(10, 10, 80)).export(project.root / "block.stl")
@@ -184,15 +184,15 @@ def test_agent_edits_appear_without_reloading(app):
 def test_values_history_and_litter_box(app):
     page, project = app
     project.meow("D1", "Bore", "Measure it")
-    page.wait_for_selector("#f-D1")
-    page.fill("#f-D1", "10")
-    page.press("#f-D1", "Tab")
-    page.wait_for_function("document.querySelector('.badge').textContent === 'measured'")
-    page.fill("#f-D1", "12")
-    page.press("#f-D1", "Tab")
-    page.wait_for_function("document.getElementById('f-D1').value === '12'")
+    page.wait_for_selector("#q-D1")
+    page.fill("#q-D1", "10")
+    page.press("#q-D1", "Enter")
+    page.wait_for_function("document.querySelector('.qhead .badge').textContent === 'measured'")
+    page.fill("#q-D1", "12")
+    page.press("#q-D1", "Enter")
+    page.wait_for_function("document.querySelector('.chip').title === 'Bore: 12 mm'")
     page.locator("#lives button").last.click()
-    page.wait_for_function("document.getElementById('f-D1').value === '10'")
+    page.wait_for_function("document.getElementById('q-D1').value === '10'")
     assert project.params()["D1"]["value"] == 10
 
     page.click("text=Discard this file")
@@ -240,59 +240,89 @@ def test_collar_tag_runs_machine_checks(app):
     assert json.loads(json.dumps(profiles.load("p1s")))["fields"]["build_x_mm"]["value"] == 256
 
 
-def test_next_step_card_walks_through_questions_until_the_agents_turn(app):
+def current(page):
+    return page.locator("#question h2").inner_text()
+
+
+def wait_for_question(page, name):
+    page.wait_for_function("name => document.querySelector('#question h2')?.textContent === name", arg=name)
+
+
+def test_carousel_walks_through_questions_until_the_agents_turn(app):
     page, project = app
     assert "no questions" in page.inner_text("#next")
+    assert not page.locator("#carousel").is_visible()
 
     project.meow("use", "Where it lives", "Where does it go?", kind="choice", choices=["Indoors", "Outdoors"])
     project.meow("why", "Reason", "Why replace it?", kind="text")
     project.meow("bore", "Bore", "Measure the bore", unit="mm", show="block.stl")
     project.meow("color", "Color", "Any color?", kind="text", required=False)
-    page.wait_for_function("document.querySelector('#next h2').textContent === 'Where it lives'")
+    wait_for_question(page, "Where it lives")
     assert "3 questions left" in page.inner_text("#next")
+    assert "1 of 4" in page.inner_text("#question")
 
     # Saving with nothing entered holds on the same question.
-    page.click("#next .primary")
+    page.click("#question .primary")
     page.wait_for_selector("#toast:not([hidden])")
     assert project.params()["use"]["status"] == "needed"
 
-    page.click("#next label:has-text('Outdoors')")
-    page.click("#next .primary")
-    page.wait_for_function("document.querySelector('#next h2').textContent === 'Reason'")
+    page.click("#question label:has-text('Outdoors')")
+    page.click("#question .primary")
+    wait_for_question(page, "Reason")
     assert project.params()["use"]["value"] == "Outdoors"
+    assert page.get_attribute(".chip:nth-child(1)", "title") == "Where it lives: Outdoors"
 
-    # Skipping moves on and tells the user they can't finish without it.
-    page.click("#next button:has-text('Skip')")
-    page.wait_for_function("document.querySelector('#next h2').textContent === 'Bore'")
-    page.fill("#next input[type=number]", "12.5")
-    page.select_option("#next select", "assumed")
-    page.click("#next .primary")
-    page.wait_for_function("document.querySelector('#next h2').textContent.includes('skipped')")
-    assert "Reason" in page.inner_text("#next")
-    assert project.params()["bore"]["status"] == "assumed"
+    # Leaving a question keeps what was typed but saves nothing.
+    page.fill("#question textarea", "It is str")
+    page.click("button[aria-label='Next question']")
+    wait_for_question(page, "Bore")
+    page.click("button[aria-label='Previous question']")
+    wait_for_question(page, "Reason")
+    assert page.input_value("#question textarea") == "It is str"
+    assert project.params()["why"]["status"] == "needed"
 
-    page.click("#next button:has-text('Go back')")
-    page.fill("#next textarea", "It is stripped")
-    page.click("#next .primary")
+    page.fill("#question textarea", "It is stripped")
+    page.click("#question .primary")
+    wait_for_question(page, "Bore")
+    page.fill("#question input[type=number]", "12.5")
+    page.select_option("#question select", "assumed")
+    page.click("#question .primary")
 
-    # The optional question doesn't hold anything up.
+    # Saving skips ahead to what's still open, and optional questions don't hold anything up.
+    wait_for_question(page, "Color")
     page.wait_for_function("document.querySelector('#next h2').textContent.includes('Tell your agent')")
     assert "1 optional question" in page.inner_text("#next")
     assert project.hungry() == {}
 
+    # A chip reopens an answer to change or clear it.
+    page.click(".chip:has-text('Bore')")
+    wait_for_question(page, "Bore")
+    assert page.input_value("#question input[type=number]") == "12.5"
+    assert page.input_value("#question select") == "assumed"
+    page.click("button:has-text('Clear answer')")
+    page.wait_for_function("document.querySelector('#next h2').textContent.includes('1 question left')")
+    assert project.params()["bore"]["status"] == "needed"
+    page.fill("#question input[type=number]", "13")
+    page.click("#question .primary")
+    page.wait_for_function("document.querySelector('#next h2').textContent.includes('Tell your agent')")
+
     project.nudge("Print the gauge")
     page.wait_for_function("document.querySelector('#next h2').textContent === 'Print the gauge'")
 
+    # A new question after everything was answered comes straight up.
+    project.meow("more", "One more", "Sorry, another", kind="text")
+    wait_for_question(page, "One more")
 
-def test_polling_keeps_a_half_typed_answer(app):
+
+def test_polling_keeps_a_half_typed_answer_and_still_shows_agent_changes(app):
     page, project = app
     project.meow("bore", "Bore", "Measure the bore")
-    page.wait_for_selector("#next input[type=number]")
-    page.fill("#next input[type=number]", "7")
-    page.locator("#next h2").click()
+    page.wait_for_selector("#q-bore")
+    page.fill("#q-bore", "7")
     project.add_dot("block.stl", [0, 0, 20], "something changed")
     page.wait_for_selector(".pin")
-    assert page.input_value("#next input[type=number]") == "7"
+    assert page.input_value("#q-bore") == "7"
+    assert page.evaluate("document.activeElement.id") == "q-bore"
 
 
 def test_questions_mark_their_dimension_and_bring_up_the_picture(app):
@@ -300,11 +330,12 @@ def test_questions_mark_their_dimension_and_bring_up_the_picture(app):
     (project.root / "photos").mkdir()
     (project.root / "photos" / "side.png").write_bytes(blank_png(200, 100))
     project.meow("width", "Width", "Measure it", show="photos/side.png", at=[[0.25, 0.5], [0.75, 0.5]])
+    project.meow("across", "Across", "Measure it", show="photos/side.png", at=[[0.25, 0.5], [0.75, 0.5]])
     project.meow("top", "Top", "On the block", show="block.stl", at=[[0, 0, 20]])
-    project.meow("same", "Same spot", "?", show="photos/side.png", at=[[0.25, 0.5], [0.75, 0.5]], required=False)
 
     page.wait_for_selector('.mark.active[data-key="width"]')
     assert page.input_value("#file") == "photos/side.png"
+    page.wait_for_function("document.getElementById('photoimg').naturalWidth === 200")
     image = page.locator("#photoimg").bounding_box()
     stage = page.locator("#stage").bounding_box()
     line = page.locator('.mark[data-key="width"] .span')
@@ -318,30 +349,40 @@ def test_questions_mark_their_dimension_and_bring_up_the_picture(app):
             "(n) => { const b = n.getBBox(); return [b.y, b.y + b.height]; }"
         )
 
-    (top_a, bottom_a), (top_b, bottom_b) = glyph_box("width"), glyph_box("same")
+    (top_a, bottom_a), (top_b, bottom_b) = glyph_box("width"), glyph_box("across")
     assert bottom_a <= top_b or bottom_b <= top_a
 
     # Marks on other pictures stay off this one.
     assert page.locator('.mark[data-key="top"]').count() == 0
 
-    # The next question brings its own picture, and the mark shows the answer once there is one.
-    page.fill("#next input[type=number]", "30")
-    page.click("#next .primary")
+    # The highlight follows the question within one picture, and across to the next.
+    page.fill("#question input[type=number]", "30")
+    page.click("#question .primary")
+    page.wait_for_selector('.mark.active[data-key="across"]')
+    assert page.locator(".mark.active").count() == 1
+    page.click("button[aria-label='Next question']")
     page.wait_for_selector('.mark.active[data-key="top"]')
     assert page.input_value("#file") == "block.stl"
 
-    page.locator('.field[data-key="width"] button:has-text("Show on picture")').click()
+    # Clicking a label on the picture goes to its question, and the mark shows the answer.
+    page.click(".chip:has-text('Width')")
     page.wait_for_selector('.mark.active[data-key="width"]')
-    assert page.input_value("#file") == "photos/side.png"
     assert page.text_content('.mark[data-key="width"] text') == "Width: 30 mm"
-    assert "active" in page.get_attribute('.field[data-key="width"]', "class")
+    page.wait_for_function("(i => i.complete && i.getBoundingClientRect().width > 0)(document.getElementById('photoimg'))")
+    page.wait_for_timeout(100)
+    page.locator('.mark[data-key="across"] text').click(force=True)
+    wait_for_question(page, "Across")
 
 
-def test_skipping_moves_the_highlight_between_marks_on_one_picture(app):
+def test_picture_and_question_stay_in_view_with_many_questions(app):
     page, project = app
-    project.meow("first", "First", "?", show="block.stl", at=[[0, 0, 20]])
-    project.meow("second", "Second", "?", show="block.stl", at=[[10, 0, 20]])
-    page.wait_for_selector('.mark.active[data-key="first"]')
-    page.click("#next button:has-text('Skip')")
-    page.wait_for_selector('.mark.active[data-key="second"]')
-    assert page.locator(".mark.active").count() == 1
+    for number in range(40):
+        project.meow(f"q{number}", f"Question {number}", "Measure it", show="block.stl", at=[[number, 0, 20]])
+    page.wait_for_function("document.querySelectorAll('.chip').length === 40")
+
+    assert page.evaluate("document.documentElement.scrollHeight <= window.innerHeight")
+    stage = page.locator("#stage").bounding_box()
+    last_chip = page.locator(".chip").last.bounding_box()
+    save = page.locator("#question .answer .primary").bounding_box()
+    assert stage["height"] >= 260
+    assert save["y"] + save["height"] <= 1000 and last_chip["y"] + last_chip["height"] <= 1000

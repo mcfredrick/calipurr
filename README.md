@@ -21,8 +21,9 @@ That opens Emily's visual interface in your browser. It only listens on your own
 | In the GUI | Plain label | What it does |
 |---|---|---|
 | Cat tree | Project stages | Emily climbs as the project moves from Measure to Model, Check and Make |
-| Next-step card | What Emily needs next | Asks one question at a time, opens the picture with that dimension marked, and says plainly what you need to do to move on |
-| Food bowl | Questions and answers | See and change every answer, and mark numbers measured or assumed |
+| Next-step banner | What Emily needs next | Says plainly what you need to do to move on |
+| Kibble | Questions | Under the picture, one question at a time, with that dimension marked on the picture. Click any piece of kibble to jump to a question or change an answer |
+| Food bowl | Answers so far | Fills as you answer |
 | Yarn ball | Rotate | Turn the model |
 | Laser dot | Point at this | Pin a comment to a spot on a model or photo. Click a dot again or use its x to remove it |
 | Paw | Pick a step | Click the gauge step that fit |
