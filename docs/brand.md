@@ -24,6 +24,8 @@ Each cat object does a real job, chosen because cat behavior already resembles t
 
 The word "laser" in the laser dot refers only to the comment pointer. Laser cutter screens use their own plain language so the two never get confused.
 
+A **kitten** (plain label: test piece) is a small print or cut that answers one question about a bigger part. A **litter of kittens** is a set of them, like a stepped gauge's sizes.
+
 ## CLI vocabulary
 
 | Pun | Plain alias | Job |
