@@ -55,8 +55,12 @@ h2 small{font-weight:400;color:var(--muted)}
 .badge{font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px}
 .badge.needed{background:#f9dfdc;color:#8f211c}.badge.assumed{background:#f3e8c6;color:#6f5610}.badge.measured{background:#d8eee0;color:#1d5a37}
 .comments{list-style:none;padding:0;margin:8px 0 0;font-size:13px}
-.comments li{padding:5px 0;border-top:1px solid var(--line)}
+.comments li{display:flex;align-items:flex-end;gap:6px;padding:5px 0;border-top:1px solid var(--line)}
+.comments label{flex:1}
 .comments input{width:100%;font:inherit;padding:4px;border:1px solid var(--line);border-radius:6px}
+.comments button{font:inherit;line-height:1;width:30px;height:30px;background:var(--paper);border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink)}
+.comments button:hover{background:#f9dfdc}
+#view.pointing .pinmark{cursor:pointer}
 .lives{display:flex;gap:3px;margin-top:4px}
 .lives span{font-size:14px;opacity:.25}.lives span.on{opacity:1}
 @media(max-width:980px){main{grid-template-columns:1fr}.tree svg{max-width:220px;margin:auto}}
@@ -73,7 +77,7 @@ h2 small{font-weight:400;color:var(--muted)}
 <main>
   <section class="card tree" aria-label="Project stages">
     <h2>Cat tree <small>project stages</small></h2>
-    <svg viewBox="0 0 170 400" id="tree">
+    <svg viewBox="0 -40 170 440" id="tree">
       <rect x="77" y="30" width="16" height="340" fill="#d8c7a6" stroke="#7d6240" stroke-width="2"/>
       <path d="M77 60h16M77 70h16M77 150h16M77 160h16M77 240h16M77 250h16M77 330h16" stroke="#a78e63" stroke-width="2"/>
       <rect x="20" y="368" width="130" height="20" rx="6" fill="#7d6240"/>
@@ -82,13 +86,19 @@ h2 small{font-weight:400;color:var(--muted)}
       <g class="perch" data-i="1" tabindex="0" role="button" aria-label="Model stage"><rect x="26" y="220" width="118" height="22" rx="8"/><text x="85" y="236">Model</text></g>
       <g class="perch" data-i="0" tabindex="0" role="button" aria-label="Measure stage"><rect x="26" y="310" width="118" height="22" rx="8"/><text x="85" y="326">Measure</text></g>
       <g id="stagecat">
-        <path d="M112 0c13 1 18-7 15-14" fill="none" stroke="#1d1d24" stroke-width="5" stroke-linecap="round"/>
-        <ellipse cx="96" cy="-14" rx="20" ry="15" fill="#1d1d24"/>
-        <ellipse cx="88" cy="-9" rx="8" ry="9" fill="#fbf8f1"/>
-        <circle cx="82" cy="-33" r="15" fill="#1d1d24"/>
-        <path d="M70-42l-1-13 11 7zM94-42l1-13-11 7z" fill="#1d1d24"/>
-        <path d="M82-40c-5 6-8 11-8 16 0 4 16 4 16 0 0-5-3-10-8-16z" fill="#fbf8f1"/>
-        <circle cx="76" cy="-35" r="2.5" fill="#e9c74e"/><circle cx="88" cy="-35" r="2.5" fill="#e9c74e"/>
+        <path d="M116 -1c14 1 19-8 15-16" fill="none" stroke="#1d1d24" stroke-width="5" stroke-linecap="round"/>
+        <ellipse cx="98" cy="-13" rx="22" ry="14" fill="#1d1d24"/>
+        <ellipse cx="86" cy="-9" rx="9" ry="9" fill="#fbf8f1"/>
+        <path d="M61-44l-3-19 15 9zM95-44l3-19-15 9z" fill="#1d1d24"/>
+        <path d="M63-49l-1-8 6 4zM93-49l1-8-6 4z" fill="#ec9fa4"/>
+        <ellipse cx="78" cy="-36" rx="20" ry="17" fill="#1d1d24"/>
+        <path d="M78-50c-6 8-12 14-12 22 0 7 6 9 12 9s12-2 12-9c0-8-6-14-12-22z" fill="#fbf8f1"/>
+        <ellipse cx="68.5" cy="-38" rx="5" ry="5.5" fill="#e9c74e"/><ellipse cx="87.5" cy="-38" rx="5" ry="5.5" fill="#e9c74e"/>
+        <ellipse cx="69" cy="-37.5" rx="2" ry="4.6" fill="#111116"/><ellipse cx="87" cy="-37.5" rx="2" ry="4.6" fill="#111116"/>
+        <circle cx="70" cy="-40" r="1.2" fill="#fff"/><circle cx="88" cy="-40" r="1.2" fill="#fff"/>
+        <path d="M75-30h6l-3 3.5z" fill="#ec8f96"/>
+        <path d="M78-26.5c0 3-3 4-5.5 2.5M78-26.5c0 3 3 4 5.5 2.5" fill="none" stroke="#1d1d24" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M66-30l-18-3M66-27l-18 3M90-30l18-3M90-27l18 3" stroke="#8d8d96" stroke-width="1.2" stroke-linecap="round"/>
       </g>
     </svg>
     <p class="stage-note" id="stagenote" aria-live="polite"></p>
@@ -173,7 +183,7 @@ function render(){
     const tl=project(-fl-10,0,0),tt=project(-fl-10,t,0);
     s+=leader('T',tl,tt,-70);
   }
-  pins.forEach((p,i)=>{s+=`<circle class="pin" cx="${p.x}" cy="${p.y}" r="8"/><text x="${p.x}" y="${p.y+4}" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">${i+1}</text>`});
+  pins.forEach((p,i)=>{s+=`<g class="pinmark" data-i="${i}"><title>Dot ${i+1}. Click with the laser dot tool to remove it.</title><circle class="pin" cx="${p.x}" cy="${p.y}" r="8"/><text x="${p.x}" y="${p.y+4}" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">${i+1}</text></g>`});
   el('view').innerHTML=s;
 }
 function label(k){const f=FIELDS.find(x=>x.key===k);return f.value==null?`${k} = ?`:`${k} = ${f.value} mm`}
@@ -220,16 +230,23 @@ el('dims').onclick=()=>{showDims=!showDims;el('dims').setAttribute('aria-pressed
 
 const view=el('view');let drag=null;
 view.addEventListener('pointerdown',e=>{
-  if(mode==='spin'){drag={x:e.clientX,y:e.clientY};view.setPointerCapture(e.pointerId);return}
+  if(mode==='spin'){drag={x:e.clientX,y:e.clientY};view.setPointerCapture(e.pointerId)}
+});
+view.addEventListener('click',e=>{
+  if(mode!=='point')return;
+  const dot=e.target.closest('.pinmark');
+  if(dot){removePin(+dot.dataset.i);return}
   const pt=new DOMPoint(e.clientX,e.clientY).matrixTransform(view.getScreenCTM().inverse());
   pins.push({x:+pt.x.toFixed(1),y:+pt.y.toFixed(1),text:''});
   renderComments(true);render();
 });
 view.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.01;pitch=Math.max(.1,Math.min(1.35,pitch+(e.clientY-drag.y)*.01));drag={x:e.clientX,y:e.clientY};render()});
 view.addEventListener('pointerup',()=>drag=null);
+function removePin(i){pins.splice(i,1);renderComments(false);render()}
 function renderComments(focus){
-  el('comments').innerHTML=pins.map((p,i)=>`<li><label><b>Dot ${i+1}.</b> <input data-i="${i}" placeholder="Tell Emily about this spot" value="${esc(p.text).replace(/"/g,'&quot;')}"></label></li>`).join('');
+  el('comments').innerHTML=pins.map((p,i)=>`<li><label><b>Dot ${i+1}.</b> <input data-i="${i}" placeholder="Tell Emily about this spot" value="${esc(p.text).replace(/"/g,'&quot;')}"></label><button type="button" data-i="${i}" aria-label="Remove dot ${i+1}" title="Remove dot ${i+1}">×</button></li>`).join('');
   el('comments').querySelectorAll('input').forEach(n=>n.oninput=()=>pins[+n.dataset.i].text=n.value);
+  el('comments').querySelectorAll('button').forEach(n=>n.onclick=()=>{removePin(+n.dataset.i);el('point').focus()});
   if(focus){const all=el('comments').querySelectorAll('input');all[all.length-1].focus()}
 }
 setMode('spin');setStage(0);renderFields();refresh();
