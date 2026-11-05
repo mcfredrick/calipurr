@@ -197,3 +197,61 @@ def test_machine_values_can_be_fed_through_the_server(project, served):
     host = served()
     assert call(host, "/api/machine/feed", {"name": "p", "key": "build_x_mm", "value": 256, "status": "measured"})[0] == 200
     assert profiles.load("p")["fields"]["build_x_mm"]["value"] == 256
+
+
+def test_choice_and_text_questions_validate_their_answers(project):
+    project.meow("use", "Use", "Where?", kind="choice", choices=["Indoors", "Outdoors"])
+    project.meow("why", "Why", "Why?", kind="text", required=False)
+    assert set(project.hungry()) == {"use"}
+
+    with pytest.raises(Hiss, match="one of"):
+        project.answer("use", "Moon")
+    with pytest.raises(Hiss, match="needs an answer"):
+        project.answer("why", "   ")
+
+    assert project.answer("use", "Outdoors")["status"] == "answered"
+    assert project.hungry() == {}
+    assert project.answer("why", "It broke")["value"] == "It broke"
+
+
+def test_asking_again_keeps_an_answer_only_if_it_still_fits(project):
+    project.meow("use", "Use", "Where?", kind="choice", choices=["Indoors", "Outdoors"])
+    project.answer("use", "Outdoors")
+
+    project.meow("use", "Use", "Where does it live?", kind="choice", choices=["Indoors", "Outdoors"])
+    assert project.params()["use"]["value"] == "Outdoors"
+
+    project.meow("use", "Use", "Where?", kind="choice", choices=["Wet", "Dry"])
+    assert project.params()["use"]["status"] == "needed"
+    assert "value" not in project.params()["use"]
+
+    project.meow("bore", "Bore", "Measure")
+    project.answer("bore", 5)
+    project.meow("bore", "Bore", "Describe it", kind="text")
+    assert project.params()["bore"]["status"] == "needed"
+
+
+@pytest.mark.parametrize("kwargs", [{"kind": "choice"}, {"choices": ["a"]}, {"kind": "essay"}, {"show": "nope.jpg"}])
+def test_malformed_questions_are_refused(project, kwargs):
+    with pytest.raises(Hiss):
+        project.meow("q", "Q", "?", **kwargs)
+
+
+def test_bowl_and_nudge_tell_an_agent_where_things_stand(project, capsys):
+    from calipurr.cli import main
+
+    args = ["--json", "--project", str(project.root)]
+    project.meow("use", "Use", "Where?", kind="text")
+    assert main(["bowl", *args]) == 1
+    assert json.loads(capsys.readouterr().out)["ready"] is False
+
+    project.answer("use", "Outdoors")
+    assert main(["nudge", "Print the gauge", *args]) == 0
+    capsys.readouterr()
+    assert main(["bowl", *args]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["ready"] is True and out["next"] == "Print the gauge"
+    assert out["params"]["use"]["value"] == "Outdoors"
+
+    assert main(["nudge", "--clear", *args]) == 0
+    assert project.next_step() == ""

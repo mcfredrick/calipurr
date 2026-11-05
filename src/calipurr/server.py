@@ -90,6 +90,8 @@ class App:
             machines[name] = {"kind": profile["kind"], "fields": profile["fields"]}
         return {
             "project": self.project.root.name,
+            "root": str(self.project.root),
+            "next": self.project.next_step(),
             "params": self.project.params(),
             "dots": self.project.dots(),
             "files": self.project.files(),

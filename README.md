@@ -21,7 +21,8 @@ That opens Emily's visual interface in your browser. It only listens on your own
 | In the GUI | Plain label | What it does |
 |---|---|---|
 | Cat tree | Project stages | Emily climbs as the project moves from Measure to Model, Check and Make |
-| Food bowl | Measurements needed | Answer questions, and mark each answer measured or assumed |
+| Next-step card | What Emily needs next | Asks one question at a time and says plainly what you need to do to move on |
+| Food bowl | Questions and answers | See and change every answer, and mark numbers measured or assumed |
 | Yarn ball | Rotate | Turn the model |
 | Laser dot | Point at this | Pin a comment to a spot on a model or photo. Click a dot again or use its x to remove it |
 | Paw | Pick a step | Click the gauge step that fit |
@@ -79,9 +80,10 @@ Profiles are saved in `~/.config/calipurr/machines/`, so they stay on your compu
 | `vet` | `show` | Show a machine's values and where they came from |
 | `feed` | `set` | Record a machine value, with `--assumed` for guesses |
 | `hungry` | `missing` | List machine values still needed (exits 1 if any are) |
-| `meow` | `ask` | Ask for a part dimension |
-| `bowl` | `params` | List part dimensions (exits 1 if any are needed) |
-| `treat` | `answer` | Record a part dimension |
+| `meow` | `ask` | Ask a question in the GUI: a number, free text or a choice |
+| `bowl` | `params` | List questions and answers (exits 1 if required ones are unanswered) |
+| `nudge` | `next` | Tell the user what to do next, shown at the top of the GUI |
+| `treat` | `answer` | Record an answer |
 | `dots` | `comments` | Read laser dot comments |
 | `kitten` | `test-piece` | Make gauges and cutouts, and report results |
 | `purrflight` | `check` | Check a model before making it (exits 1 on a failure) |

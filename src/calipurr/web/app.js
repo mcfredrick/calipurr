@@ -70,6 +70,7 @@ const ui = {
   check: null,
   viewedStage: null,
   drafts: { measured: '', material: '', note: '' },
+  skipped: new Set(),
 };
 
 // 3D view
@@ -478,14 +479,15 @@ function renderFiles() {
 
 function renderBowl() {
   const params = Object.entries(ui.state.params);
-  const missing = params.filter(([, e]) => e.status === 'needed').length;
-  const fed = params.length - missing;
-  const height = params.length ? 32 * fed / params.length : 0;
+  const required = params.filter(([, e]) => e.required !== false);
+  const missing = required.filter(([, e]) => e.status === 'needed').length;
+  const fed = required.length - missing;
+  const height = required.length ? 32 * fed / required.length : 0;
   $('kibble').setAttribute('y', 48 - height);
   $('kibble').setAttribute('height', height);
   $('bowlmsg').textContent = !params.length
-    ? 'Nothing asked yet. Your agent can add questions with calipurr meow.'
-    : missing ? `Emily needs ${missing} more value${missing > 1 ? 's' : ''}.` : 'Bowl full. Emily is purring.';
+    ? 'Nothing asked yet.'
+    : missing ? `${missing} required answer${missing > 1 ? 's' : ''} to go.` : 'Bowl full. Emily is purring.';
 
   $('fields').replaceChildren(...params.map(([key, entry]) => fieldNode(key, entry)));
   const build = ui.state.build;
@@ -498,7 +500,37 @@ function renderBowl() {
   }
 }
 
+function answerInput(key, entry, id) {
+  if (entry.kind === 'choice') {
+    return h('div', { class: 'choices', role: 'radiogroup', 'aria-label': entry.name || key }, ...entry.choices.map((choice) => h('label', {},
+      h('input', { type: 'radio', name: `${id}-${key}`, value: choice, ...(entry.value === choice ? { checked: '' } : {}) }), choice)));
+  }
+  if (entry.kind === 'text') return h('textarea', { id, rows: 2, 'aria-label': entry.name || key, value: entry.value ?? '' });
+  return null;
+}
+
+function answerValue(node) {
+  const picked = node.querySelector?.('input:checked');
+  return picked ? picked.value : node.value ?? '';
+}
+
+function textFieldNode(key, entry) {
+  const input = answerInput(key, entry, `f-${key}`);
+  input.onchange = () => act('/api/params', { key, value: answerValue(input) });
+  return h('div', { class: 'field' },
+    h('label', { class: 'title', for: `f-${key}` }, entry.name || key, badge(entry)),
+    h('p', {}, entry.ask || ''),
+    input,
+  );
+}
+
+function badge(entry) {
+  const optional = entry.status === 'needed' && entry.required === false;
+  return h('span', { class: `badge ${optional ? 'optional' : entry.status}` }, optional ? 'optional' : entry.status);
+}
+
 function fieldNode(key, entry) {
+  if (entry.kind === 'text' || entry.kind === 'choice') return textFieldNode(key, entry);
   const input = h('input', { id: `f-${key}`, type: 'number', min: '0', step: 'any', value: entry.value ?? '', 'aria-label': `${entry.name || key} in ${entry.unit || 'mm'}` });
   const status = h('select', { 'aria-label': `How you know ${entry.name || key}` },
     h('option', { value: 'measured' }, 'Measured'), h('option', { value: 'assumed' }, 'Assumed'));
@@ -514,7 +546,7 @@ function fieldNode(key, entry) {
   status.onchange = commit;
   const note = entry.note ? h('p', {}, entry.note) : null;
   return h('div', { class: 'field' },
-    h('label', { class: 'title', for: `f-${key}` }, `${key}, ${entry.name || ''}`, h('span', { class: `badge ${entry.status}` }, entry.status)),
+    h('label', { class: 'title', for: `f-${key}` }, entry.name || key, badge(entry)),
     h('p', {}, entry.ask || ''),
     h('div', { class: 'row' }, input, h('span', {}, entry.unit || 'mm'), status),
     note,
@@ -542,6 +574,105 @@ function gaugeForm(key, entry) {
     h('div', { class: 'row' }, 'From', from, 'to', to, 'by', step, 'mm'),
     h('div', { class: 'row' }, kind, make),
   );
+}
+
+function emilyCard(variant, kicker, title, ...rest) {
+  return h('div', { class: `nextcard ${variant}` },
+    h('img', { src: '/logo.svg', alt: '' }),
+    h('div', { class: 'body' }, h('div', { class: 'kicker' }, kicker), h('h2', {}, title), ...rest));
+}
+
+function questionCard(key, entry, total) {
+  const id = `q-${key}`;
+  let control = answerInput(key, entry, id);
+  let status = null;
+  if (!control) {
+    control = h('input', { id, type: 'number', min: '0', step: 'any', 'aria-label': entry.name || key });
+    status = h('select', { 'aria-label': 'How you know this' }, h('option', { value: 'measured' }, 'Measured'), h('option', { value: 'assumed' }, 'Just a guess'));
+  }
+  const save = async () => {
+    const value = answerValue(control);
+    if (!value) {
+      toast('Enter an answer, or skip this one for now.');
+      return;
+    }
+    await act('/api/params', { key, value, status: status ? status.value : undefined });
+    document.querySelector('#next textarea, #next input:not([type=radio])')?.focus();
+  };
+  if (entry.kind !== 'text') control.addEventListener('keydown', (event) => { if (event.key === 'Enter') save(); });
+  const showMe = entry.show ? h('button', { type: 'button', class: 'linkish', onclick: () => {
+    selectFile(entry.show);
+    $('stage').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } }, 'Show me where') : null;
+  return emilyCard('', `EMILY NEEDS YOU: ${total} question${total > 1 ? 's' : ''} left`, entry.name || key,
+    h('div', { class: 'progress', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': ui.requiredTotal, 'aria-valuenow': ui.requiredTotal - total },
+      h('i', { style: `width:${ui.requiredTotal ? (ui.requiredTotal - total) / ui.requiredTotal * 100 : 0}%` })),
+    h('p', { class: 'ask' }, entry.ask || ''),
+    entry.why ? h('p', { class: 'why' }, entry.why) : null,
+    h('div', { class: 'row' }, control, status ? h('span', {}, entry.unit || 'mm') : null, status),
+    h('div', { class: 'actions' },
+      h('button', { type: 'button', class: 'primary', onclick: save }, total > 1 ? 'Save and next' : 'Save'),
+      h('button', { type: 'button', class: 'linkish', onclick: () => {
+        ui.skipped.add(key);
+        renderNext();
+      } }, 'Skip for now'),
+      showMe,
+    ));
+}
+
+function renderNext() {
+  const params = Object.entries(ui.state.params);
+  const required = params.filter(([, e]) => e.required !== false);
+  ui.requiredTotal = required.length;
+  const needed = required.filter(([, e]) => e.status === 'needed');
+  const optional = params.filter(([, e]) => e.required === false && e.status === 'needed');
+  const node = $('next');
+  const copy = (opening) => {
+    const text = `${opening} Read my answers and comments with: calipurr bowl --json --project "${ui.state.root}" and calipurr dots --json --project "${ui.state.root}"`;
+    return h('button', { type: 'button', class: 'primary', onclick: async () => {
+      await navigator.clipboard.writeText(text);
+      toast('Copied. Paste it to your agent.', true);
+    } }, 'Copy a message for your agent');
+  };
+  if (needed.length) {
+    const pending = needed.filter(([key]) => !ui.skipped.has(key));
+    if (!pending.length) {
+      ui.shownQuestion = null;
+      node.replaceChildren(emilyCard('', `EMILY NEEDS YOU: ${needed.length} skipped`, 'You skipped the rest for now',
+        h('p', { class: 'ask' }, `Emily can't move on until ${needed.length === 1 ? 'this is' : 'these are'} answered: ${needed.map(([, e]) => e.name).join(', ')}.`),
+        h('div', { class: 'actions' }, h('button', { type: 'button', class: 'primary', onclick: () => {
+          ui.skipped.clear();
+          renderNext();
+        } }, 'Go back to them')),
+      ));
+      return;
+    }
+    const [key, entry] = pending[0];
+    // Redrawing the same question would wipe a half-typed answer.
+    const shown = JSON.stringify([key, entry, needed.length]);
+    if (ui.shownQuestion === shown) return;
+    ui.shownQuestion = shown;
+    node.replaceChildren(questionCard(key, entry, needed.length));
+    return;
+  }
+  ui.shownQuestion = null;
+  if (ui.state.next) {
+    node.replaceChildren(emilyCard('', 'YOUR NEXT STEP', ui.state.next,
+      h('p', { class: 'why' }, 'Your agent is waiting on this. Tell it when you finish.'),
+      h('div', { class: 'actions' }, copy(`I finished this step: ${ui.state.next}`))));
+    return;
+  }
+  if (params.length) {
+    const extra = optional.length ? h('p', { class: 'why' }, `${optional.length} optional question${optional.length > 1 ? 's' : ''} left in the food bowl, if you have time.`) : null;
+    node.replaceChildren(emilyCard('done', "THAT'S EVERYTHING FOR NOW", 'Your turn is done. Tell your agent you finished.',
+      h('p', { class: 'ask' }, "Your agent can't see this page change on its own, so let it know."),
+      extra,
+      h('div', { class: 'actions' }, copy("I answered Emily's questions.")),
+    ));
+    return;
+  }
+  node.replaceChildren(emilyCard('waiting', 'NOTHING NEEDED', 'Emily has no questions right now.',
+    h('p', { class: 'why' }, 'Your agent can ask here with calipurr meow.')));
 }
 
 function renderLives() {
@@ -709,7 +840,7 @@ function renderChecks() {
 
 function computedStage() {
   const params = Object.values(ui.state.params);
-  if (params.some((e) => e.status === 'needed')) return 0;
+  if (params.some((e) => e.status === 'needed' && e.required !== false)) return 0;
   if (!ui.state.files.models.length) return 1;
   // Warnings ask for a look but don't block, because a person can judge them. Failures and unknowns hold here.
   if (!['pass', 'warn'].includes(ui.check?.overall)) return 2;
@@ -744,6 +875,7 @@ function renderAll() {
   $('project').textContent = ui.state.project;
   renderMachines();
   renderFiles();
+  renderNext();
   renderBowl();
   renderLives();
   renderComments();

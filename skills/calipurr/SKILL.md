@@ -25,8 +25,13 @@ The user's machine profiles are the source of truth for machine limits. Every va
 
 Run these from the part's project folder. Read the user's input before changing the model, because they may have answered questions or commented since you last looked.
 
-- Ask for a dimension: `calipurr meow KEY --name "..." --ask "where and how to measure it"`
-- Read dimensions: `calipurr bowl --json`. Build scripts should read `params.toml`.
+- Ask the user anything you need through the GUI, in place of asking in chat, so they can see what's left. Ask in the order you want them answered, because the GUI shows one at a time:
+  - A dimension: `calipurr meow KEY --name "..." --ask "where and how to measure it" --show photos/where.jpg`
+  - A decision: `calipurr meow KEY --name "..." --ask "..." --choice "Option A" --choice "Option B"`
+  - Anything else: `calipurr meow KEY --name "..." --ask "..." --kind text`
+  - Add `--why "..."` when the reason isn't obvious, and `--optional` when you can move on without it. Required questions block progress.
+- Read answers: `calipurr bowl --json`. `ready` is true when no required question is left, and `needed` lists the rest. Build scripts should read `params.toml`.
+- After you finish a turn, say what the user should do next with `calipurr nudge "Print the socket gauge, then report which step fit"`. It appears at the top of the GUI once required questions are answered. Run `calipurr nudge --clear` when that step is done. The GUI can't message you, so the user tells you when they've finished.
 - Read comments pinned to models and photos: `calipurr dots --json`. Positions on models are in model coordinates, and positions on photos run from 0 to 1 across and down.
 - Check a model: `calipurr purrflight FILE --machine NAME --json`. Warnings mean look closer. They aren't verdicts, so tell the user what they'd need to check in a slicer.
 - Offer the visual interface when geometry is hard to discuss in words: ask the user to run `calipurr serve`. It reloads when files change.
@@ -46,4 +51,4 @@ Before designing a part that mates with a real object, or when a print or fit te
 - A part dimension: `calipurr treat KEY VALUE --note "how it was measured"`, with `--assumed` for guesses
 - A new machine: `calipurr adopt NAME --kind printer|cnc|laser`
 
-Every command has a plain alias if the user prefers it: `adopt`/`add`, `litter`/`list`, `vet`/`show`, `feed`/`set`, `hungry`/`missing`, `meow`/`ask`, `bowl`/`params`, `treat`/`answer`, `dots`/`comments`, `kitten`/`test-piece`, `purrflight`/`check`, `serve`/`gui`.
+Every command has a plain alias if the user prefers it: `adopt`/`add`, `litter`/`list`, `vet`/`show`, `feed`/`set`, `hungry`/`missing`, `meow`/`ask`, `bowl`/`params`, `treat`/`answer`, `nudge`/`next`, `dots`/`comments`, `kitten`/`test-piece`, `purrflight`/`check`, `serve`/`gui`.

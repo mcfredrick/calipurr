@@ -86,8 +86,23 @@ def _hungry(args: argparse.Namespace) -> int:
     return 1 if _report_hungry(args, f"{args.name} is purring. Nothing needed.") else 0
 
 
+def _shown(entry: dict) -> str:
+    value = entry["value"]
+    return value if isinstance(value, str) else f"{value:g} {entry.get('unit', 'mm')}"
+
+
 def _meow(args: argparse.Namespace) -> int:
-    entry = Project(args.project).meow(args.key, args.name, args.ask, args.unit)
+    entry = Project(args.project).meow(
+        args.key,
+        args.name,
+        args.ask,
+        args.unit,
+        kind="choice" if args.choice else args.kind,
+        choices=args.choice,
+        why=args.why,
+        required=not args.optional,
+        show=args.show,
+    )
     if args.json:
         print(json.dumps({args.key: entry}))
     else:
@@ -99,19 +114,30 @@ def _bowl(args: argparse.Namespace) -> int:
     project = Project(args.project)
     params = project.params()
     if args.json:
-        print(json.dumps({"params": params, "needed": sorted(project.hungry())}))
+        needed = sorted(project.hungry())
+        print(json.dumps({"params": params, "needed": needed, "ready": not needed, "next": project.next_step()}))
     elif not params:
         print("Nothing asked yet. Ask for a value: calipurr meow KEY --name NAME --ask QUESTION")
     else:
         for key, entry in params.items():
-            value = f"{entry['value']:g} {entry.get('unit', 'mm')}" if "value" in entry else "-"
-            print(f"{key}: {value}  [{entry['status']}]  {entry.get('name', '')}")
+            value = _shown(entry) if "value" in entry else "-"
+            optional = ", optional" if not entry.get("required", True) else ""
+            print(f"{key}: {value}  [{entry['status']}{optional}]  {entry.get('name', '')}")
     return 1 if project.hungry() else 0
 
 
 def _treat(args: argparse.Namespace) -> int:
     entry = Project(args.project).answer(args.key, args.value, ASSUMED if args.assumed else MEASURED, args.note)
-    print(json.dumps({args.key: entry}) if args.json else f"Nom. {args.key} is {entry['value']:g}, {entry['status']}.")
+    print(json.dumps({args.key: entry}) if args.json else f"Nom. {args.key} is {_shown(entry)}, {entry['status']}.")
+    return 0
+
+
+def _nudge(args: argparse.Namespace) -> int:
+    project = Project(args.project)
+    if args.clear or args.text:
+        project.nudge(None if args.clear else args.text)
+    current = project.next_step()
+    print(json.dumps({"next": current}) if args.json else current or "No next step set.")
     return 0
 
 
@@ -271,15 +297,24 @@ def _parser() -> argparse.ArgumentParser:
     p = add(sub, "hungry", "missing", _hungry, "list machine values still needed; exits 1 if any are")
     p.add_argument("name")
 
-    p = add(sub, "meow", "ask", _meow, "ask the user for a part dimension", project=True)
+    p = add(sub, "meow", "ask", _meow, "ask the user a question in the GUI", project=True)
     p.add_argument("key")
-    p.add_argument("--name", required=True, help="what the dimension is")
-    p.add_argument("--ask", required=True, help="how to measure or decide it")
+    p.add_argument("--name", required=True, help="a short name for what you're asking")
+    p.add_argument("--ask", required=True, help="the question, with how to measure or decide it")
     p.add_argument("--unit", default="mm")
+    p.add_argument("--kind", default="number", choices=["number", "text"], help="the type of answer (default: number)")
+    p.add_argument("--choice", action="append", help="an allowed answer; repeat for each one")
+    p.add_argument("--why", help="why you need this, shown beside the question")
+    p.add_argument("--optional", action="store_true", help="useful, but it won't block progress")
+    p.add_argument("--show", help="a photo or model that shows what you mean")
 
-    add(sub, "bowl", "params", _bowl, "list part dimensions; exits 1 if any are still needed", project=True)
+    add(sub, "bowl", "params", _bowl, "list questions and answers; exits 1 if required ones are unanswered", project=True)
 
-    p = add(sub, "treat", "answer", _treat, "record a part dimension, treated as measured unless --assumed", project=True)
+    p = add(sub, "nudge", "next", _nudge, "tell the user what to do next, shown at the top of the GUI", project=True)
+    p.add_argument("text", nargs="?")
+    p.add_argument("--clear", action="store_true", help="remove the current next step")
+
+    p = add(sub, "treat", "answer", _treat, "record an answer, treated as measured unless --assumed", project=True)
     p.add_argument("key")
     p.add_argument("value")
     p.add_argument("--assumed", action="store_true", help="the value is a guess")

@@ -13,7 +13,8 @@ Each cat object does a real job, chosen because cat behavior already resembles t
 |---|---|---|---|
 | Cat tree | Project stages | Vertical navigation with a perch per stage (Measure, Model, Check, Make). Emily sits on the current one | Cats climb as things get interesting |
 | Laser dot | Point at this | Click the model to pin a comment to a 3D location | Everyone stares at the dot |
-| Food bowl | Measurements needed | The list of values still needed. The bowl fills as values come in | The cat tells you when something is missing |
+| Next-step card | What Emily needs next | Asks one question at a time across the top of the page and says plainly who has the next move | The cat stares at you until you act |
+| Food bowl | Questions and answers | Every question and answer in one list, editable. The bowl fills as required answers come in | The cat tells you when something is missing |
 | Yarn ball | Rotate | Drag to rotate the model | Batting a ball around |
 | Whiskers | Clearance check | Shows whether parts and machine limits have enough room | Cats use whiskers to judge gaps |
 | Cardboard box | Fit check | Shows "If it fits, I sits" when a part fits the machine | Cats and boxes |
@@ -36,9 +37,10 @@ A **kitten** (plain label: test piece) is a small print or cut that answers one 
 | `vet` | `show` | Inspect a machine's values |
 | `feed` | `set` | Record a machine value |
 | `hungry` | `missing` | List machine values still needed |
-| `meow` | `ask` | Ask for a part dimension |
-| `bowl` | `params` | List part dimensions |
-| `treat` | `answer` | Record a part dimension |
+| `meow` | `ask` | Ask the user a question in the GUI |
+| `bowl` | `params` | List questions and answers |
+| `treat` | `answer` | Record an answer |
+| `nudge` | `next` | Tell the user what to do next |
 | `dots` | `comments` | Read laser dot comments |
 | `kitten` | `test-piece` | Make and report test pieces |
 | `purrflight` | `check` | Pre-flight check |

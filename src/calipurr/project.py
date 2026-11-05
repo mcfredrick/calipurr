@@ -1,7 +1,8 @@
 """A project is a plain folder any agent can read and write.
 
-params.toml         dimensions, each needed, assumed or measured
+params.toml         questions for the user: needed, then assumed, measured or answered
 annotations.json    laser dots: comments pinned to a model or photo
+next.txt            what the agent says the user should do next
 kittens/            small test pieces and what each one proved
 litter/             discarded files, kept until the user cleans them out
 .calipurr/lives/    earlier versions of params.toml
@@ -25,6 +26,9 @@ from .profiles import ASSUMED, MEASURED, NEEDED
 MODEL_SUFFIXES = {".stl"}
 PHOTO_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 MAX_LIVES = 9
+NUMBER, TEXT, CHOICE = "number", "text", "choice"
+ANSWERED = "answered"
+QUESTION_FIELDS = ("name", "ask", "unit", "kind", "choices", "why", "required", "show")
 
 
 def positive_number(key: str, raw: object) -> float:
@@ -51,6 +55,7 @@ class Project:
             raise Hiss(f"No project folder at {self.root}")
         self.params_path = self.root / "params.toml"
         self.dots_path = self.root / "annotations.json"
+        self.next_path = self.root / "next.txt"
         self.kittens_dir = self.root / "kittens"
         self.litter_dir = self.root / "litter"
         self.lives_dir = self.root / ".calipurr" / "lives"
@@ -67,25 +72,58 @@ class Project:
             self._snapshot()
         _write_atomic(self.params_path, tomli_w.dumps({"params": params}))
 
-    def meow(self, key: str, name: str, ask: str, unit: str = "mm") -> dict:
-        """Ask for a value. Asking again rewords the question and keeps any answer."""
+    def meow(
+        self,
+        key: str,
+        name: str,
+        ask: str,
+        unit: str = "mm",
+        kind: str = NUMBER,
+        choices: list[str] | None = None,
+        why: str | None = None,
+        required: bool = True,
+        show: str | None = None,
+    ) -> dict:
+        """Ask the user something. Rewording keeps the answer unless it no longer fits the question."""
         if not key or not key.replace("_", "").isalnum():
-            raise Hiss(f"Parameter names use letters, digits and underscores, got {key!r}")
+            raise Hiss(f"Question names use letters, digits and underscores, got {key!r}")
+        if kind not in (NUMBER, TEXT, CHOICE):
+            raise Hiss(f"Question kinds are {NUMBER}, {TEXT} and {CHOICE}, got {kind!r}")
+        if (kind == CHOICE) != bool(choices):
+            raise Hiss("Choice questions need choices, and only choice questions can have them")
+        if show:
+            self.resolve_file(show)
         params = self.params()
         entry = params.get(key, {"status": NEEDED})
-        entry.update(name=name, ask=ask, unit=unit)
+        stale = entry.get("kind", NUMBER) != kind or (choices and entry.get("value") not in choices)
+        if stale:
+            entry = {"status": NEEDED}
+        for field in QUESTION_FIELDS:
+            entry.pop(field, None)
+        entry.update(name=name, ask=ask, unit=unit, kind=kind, required=required)
+        entry.update({k: v for k, v in (("choices", choices), ("why", why), ("show", show)) if v})
         params[key] = entry
         self._save_params(params)
         return entry
 
     def answer(self, key: str, raw: object, status: str = MEASURED, note: str | None = None) -> dict:
-        if status not in (ASSUMED, MEASURED):
-            raise Hiss(f"Status must be {ASSUMED} or {MEASURED}, got {status!r}")
         params = self.params()
         if key not in params:
             raise Hiss(f"Nothing has asked for {key}. Add it first: calipurr meow {key} --name ... --ask ...")
-        entry = {k: params[key][k] for k in ("name", "ask", "unit") if k in params[key]}
-        entry.update(value=positive_number(key, raw), status=status, date=date.today().isoformat())
+        question = params[key]
+        kind = question.get("kind", NUMBER)
+        if kind == NUMBER:
+            if status not in (ASSUMED, MEASURED):
+                raise Hiss(f"Status must be {ASSUMED} or {MEASURED}, got {status!r}")
+            value: float | str = positive_number(key, raw)
+        else:
+            value, status = str(raw).strip(), ANSWERED
+            if not value:
+                raise Hiss(f"{key} needs an answer")
+            if kind == CHOICE and value not in question["choices"]:
+                raise Hiss(f"{key} must be one of: {', '.join(question['choices'])}")
+        entry = {k: question[k] for k in QUESTION_FIELDS if k in question}
+        entry.update(value=value, status=status, date=date.today().isoformat())
         if note:
             entry["note"] = note
         params[key] = entry
@@ -97,14 +135,30 @@ class Project:
         params = self.params()
         if key not in params:
             raise Hiss(f"No parameter named {key}")
-        entry = {k: params[key][k] for k in ("name", "ask", "unit") if k in params[key]}
+        entry = {k: params[key][k] for k in QUESTION_FIELDS if k in params[key]}
         entry["status"] = NEEDED
         params[key] = entry
         self._save_params(params)
         return entry
 
     def hungry(self) -> dict[str, str]:
-        return {k: e.get("ask", "") for k, e in self.params().items() if e["status"] == NEEDED}
+        """Required questions still waiting on the user. Optional ones never block progress."""
+        return {
+            k: e.get("ask", "")
+            for k, e in self.params().items()
+            if e["status"] == NEEDED and e.get("required", True)
+        }
+
+    # What the user should do next
+
+    def next_step(self) -> str:
+        return self.next_path.read_text().strip() if self.next_path.exists() else ""
+
+    def nudge(self, text: str | None) -> None:
+        if text:
+            _write_atomic(self.next_path, text.strip() + "\n")
+        else:
+            self.next_path.unlink(missing_ok=True)
 
     # Nine lives
 

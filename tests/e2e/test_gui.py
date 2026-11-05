@@ -104,7 +104,7 @@ def test_full_gauge_loop_with_step_picked_on_the_model(app):
     page, project = app
     project.meow("D1", "Tube inside diameter", "Measure at two spots with calipers")
     page.wait_for_selector("#f-D1")
-    assert "1 more value" in page.inner_text("#bowlmsg")
+    assert "1 required answer" in page.inner_text("#bowlmsg")
 
     page.locator(".field details summary").first.click()
     form = page.locator(".field details")
@@ -227,3 +227,58 @@ def test_collar_tag_runs_machine_checks(app):
         page.wait_for_function(f"!document.querySelector('input[data-machine-field=\"{key}\"]')")
     page.wait_for_function("document.getElementById('fit').textContent.startsWith('If it fits, I sits.')")
     assert json.loads(json.dumps(profiles.load("p1s")))["fields"]["build_x_mm"]["value"] == 256
+
+
+def test_next_step_card_walks_through_questions_until_the_agents_turn(app):
+    page, project = app
+    assert "no questions" in page.inner_text("#next")
+
+    project.meow("use", "Where it lives", "Where does it go?", kind="choice", choices=["Indoors", "Outdoors"])
+    project.meow("why", "Reason", "Why replace it?", kind="text")
+    project.meow("bore", "Bore", "Measure the bore", unit="mm", show="block.stl")
+    project.meow("color", "Color", "Any color?", kind="text", required=False)
+    page.wait_for_function("document.querySelector('#next h2').textContent === 'Where it lives'")
+    assert "3 questions left" in page.inner_text("#next")
+
+    # Saving with nothing entered holds on the same question.
+    page.click("#next .primary")
+    page.wait_for_selector("#toast:not([hidden])")
+    assert project.params()["use"]["status"] == "needed"
+
+    page.click("#next label:has-text('Outdoors')")
+    page.click("#next .primary")
+    page.wait_for_function("document.querySelector('#next h2').textContent === 'Reason'")
+    assert project.params()["use"]["value"] == "Outdoors"
+
+    # Skipping moves on and tells the user they can't finish without it.
+    page.click("#next button:has-text('Skip')")
+    page.wait_for_function("document.querySelector('#next h2').textContent === 'Bore'")
+    page.fill("#next input[type=number]", "12.5")
+    page.select_option("#next select", "assumed")
+    page.click("#next .primary")
+    page.wait_for_function("document.querySelector('#next h2').textContent.includes('skipped')")
+    assert "Reason" in page.inner_text("#next")
+    assert project.params()["bore"]["status"] == "assumed"
+
+    page.click("#next button:has-text('Go back')")
+    page.fill("#next textarea", "It is stripped")
+    page.click("#next .primary")
+
+    # The optional question doesn't hold anything up.
+    page.wait_for_function("document.querySelector('#next h2').textContent.includes('Tell your agent')")
+    assert "1 optional question" in page.inner_text("#next")
+    assert project.hungry() == {}
+
+    project.nudge("Print the gauge")
+    page.wait_for_function("document.querySelector('#next h2').textContent === 'Print the gauge'")
+
+
+def test_polling_keeps_a_half_typed_answer(app):
+    page, project = app
+    project.meow("bore", "Bore", "Measure the bore")
+    page.wait_for_selector("#next input[type=number]")
+    page.fill("#next input[type=number]", "7")
+    page.locator("#next h2").click()
+    project.add_dot("block.stl", [0, 0, 20], "something changed")
+    page.wait_for_selector(".pin")
+    assert page.input_value("#next input[type=number]") == "7"

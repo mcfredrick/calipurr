@@ -11,6 +11,29 @@ header small{color:#c9c5ba}
 .tag select{font:inherit;border:0;border-radius:6px;padding:2px 4px}
 #toast{background:#f9dfdc;color:#6d1a15;padding:6px 18px;font-size:14px}
 #toast.good{background:#d8eee0;color:#1d5a37}
+.next{max-width:1500px;margin:14px auto 0;padding:0 18px}
+.nextcard{display:flex;gap:14px;align-items:flex-start;background:#fff8dc;border:2px solid #e9c74e;border-radius:12px;padding:12px 14px}
+.nextcard.done{background:#e9f6ee;border-color:#2d7a4e}
+.nextcard.waiting{background:#fff;border-color:var(--line)}
+.nextcard img{width:52px;height:52px;flex:none}
+.nextcard .body{flex:1;min-width:0}
+.nextcard .kicker{font-size:12px;font-weight:700;letter-spacing:.02em;color:#6f5610}
+.nextcard.done .kicker{color:#1d5a37}
+.nextcard h2{font-size:18px;margin:2px 0;font-weight:700}
+.nextcard .ask{margin:2px 0;font-size:15px}
+.nextcard .why{margin:2px 0 8px;font-size:13px;color:var(--muted)}
+.nextcard input[type=number],.nextcard input[type=text],.nextcard textarea,.nextcard select{font:inherit;padding:6px 8px;border:1px solid #b9b19c;border-radius:8px;background:#fff}
+.nextcard input[type=number]{width:120px}
+.nextcard textarea{width:min(560px,100%);min-height:44px}
+.nextcard .choices{display:flex;flex-wrap:wrap;gap:6px}
+.nextcard .choices label{border:1px solid #b9b19c;background:#fff;border-radius:999px;padding:5px 12px;cursor:pointer}
+.nextcard .choices label:has(input:checked){background:var(--ink);color:var(--paper)}
+.nextcard .choices input{position:absolute;opacity:0}
+.nextcard .choices label:has(input:focus-visible){outline:2px solid var(--red)}
+.nextcard .actions{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.nextcard .primary{font-size:14px;padding:7px 14px}
+.progress{height:8px;background:#efe6c4;border-radius:99px;overflow:hidden;margin:6px 0 8px;max-width:560px}
+.progress i{display:block;height:100%;background:#a8693a}
 main{display:grid;grid-template-columns:190px minmax(0,1fr) 300px;gap:14px;padding:14px 18px;max-width:1500px;margin:auto}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
 .middle{min-width:0}
@@ -79,12 +102,13 @@ button{font:inherit;color:var(--ink);cursor:pointer}
 .field label.title{display:block;font-weight:600}
 .field p{margin:1px 0 5px;font-size:12px;color:var(--muted)}
 .field input[type=number]{width:84px}
+.field textarea{width:100%;font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
 .field details{margin-top:6px;font-size:12px}
 .field details .row{margin-top:5px}
 .field details input{width:62px}
 .field summary{cursor:pointer;color:#8f211c}
 .badge{font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px}
-.badge.needed{background:#f9dfdc;color:#8f211c}.badge.assumed{background:#f3e8c6;color:#6f5610}.badge.measured{background:#d8eee0;color:#1d5a37}
+.badge.answered{background:#d8eee0;color:#1d5a37}.badge.optional{background:#eee;color:#555}.badge.needed{background:#f9dfdc;color:#8f211c}.badge.assumed{background:#f3e8c6;color:#6f5610}.badge.measured{background:#d8eee0;color:#1d5a37}
 .lives{display:flex;gap:2px;margin-top:4px;flex-wrap:wrap}
 .lives button,.lives span{font-size:15px;background:none;border:0;padding:1px}
 .lives span{opacity:.2}
