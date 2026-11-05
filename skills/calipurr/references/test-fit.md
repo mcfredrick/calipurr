@@ -26,7 +26,10 @@ Skip the kitten when it would take about as long as the real part, or when a fai
 
 - Span the expected size in both directions. Steps of 0.2 mm suit FDM printing as a starting point.
 - Print it in the same orientation and material as the final part, because both change the fit.
-- Label or order the steps so the user can tell them apart, and tell them which end is which.
+- Label every step so the user can report a result by name. Counting steps from an end is easy to get wrong.
+- Use one letter per step (A, B, C), and give the user a table of each letter's modeled size. Letters stay readable at sizes where a number like 20.9 won't.
+- Cut labels into the surface instead of raising them, so they can't change the fit. Keep them on the mating surface only if there's no other place, and make the steps tall enough to read them. About 6 mm is a starting point for FDM.
+- Ask for the result by letter, such as "C goes in snugly, D won't enter."
 
 ## Closing the loop
 

@@ -27,11 +27,13 @@ assumption -> kitten -> print or cut -> user reports -> value marked measured ->
 | `calipurr kitten cut part.stl --keep-above 139` | Slice one feature out of a model |
 | `calipurr purrflight part.stl --machine NAME` | Check the part is a closed solid, fits the machine, and sits on the bed |
 
+Gauges are always labeled. Each step gets a recessed letter, and the command prints a table of letters and modeled sizes. This comes from the same project, where the unlabeled gauge made it hard to say which step worked. Label legibility on small curved steps still needs a real print test, and tally marks are the fallback if letters don't hold up.
+
 Fit results get saved with the project and the machine, including material and settings, so later parts can start from a known offset. The tool would suggest that offset, marked `assumed`, and still recommend a gauge when the fit matters.
 
 ## Proposed GUI
 
 - A **kitten** can be attached to any food bowl value: "Not sure? Make a test piece."
-- A report card asks which step fit and what it measured, and fills in the value as `measured`.
+- A report card shows the gauge with its lettered steps, asks which letter fit and what it measured, and fills in the value as `measured`.
 - A **cardboard box** view shows the kittens tried so far and what each one proved.
 - Laser dots work on photos as well as models, so users can mark up a picture of their real machine.
