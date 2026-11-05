@@ -1,0 +1,25 @@
+[project]
+name = "calipurr"
+version = "0.0.1"
+description = "A measuring-obsessed cat that helps you and your AI agent agree on real-world geometry."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+dependencies = ["tomli-w>=1.0"]
+
+[project.scripts]
+calipurr = "calipurr.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/calipurr"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

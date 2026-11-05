@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calipurr GUI mockup</title>
+<style>
+:root{--ink:#1d1d24;--paper:#fbf8f1;--panel:#fff;--line:#dcd6c8;--muted:#68646b;--red:#c8362f;--gold:#b8901c;--green:#2d7a4e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.4 ui-rounded,"SF Pro Rounded",system-ui,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:10px 18px;background:var(--ink);color:var(--paper)}
+header img{width:44px;height:44px;background:var(--paper);border-radius:50%;padding:2px}
+header h1{font-size:20px;margin:0}
+header small{color:#c9c5ba}
+.tag{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--red);padding:5px 12px;border-radius:999px;font-size:13px}
+.tag i{width:14px;height:14px;border-radius:50%;background:#e9c74e;border:2px solid #fff3}
+.banner{background:#f3e8c6;padding:5px 18px;font-size:13px}
+main{display:grid;grid-template-columns:190px minmax(0,1fr) 300px;gap:14px;padding:14px 18px;max-width:1320px;margin:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+h2{font-size:14px;margin:0 0 8px}
+h2 small{font-weight:400;color:var(--muted)}
+.tree svg{width:100%;display:block}
+.perch{cursor:pointer}
+.perch rect{fill:#c7a77d;stroke:#7d6240;stroke-width:2}
+.perch.on rect{fill:#e9c74e}
+.perch text{font:700 13px system-ui;fill:var(--ink);pointer-events:none;text-anchor:middle}
+.perch:focus-visible rect{stroke:var(--red);stroke-width:4}
+#stagecat{transition:transform .45s cubic-bezier(.3,1.4,.5,1)}
+.stage-note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.tools{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tools button{display:flex;align-items:center;gap:6px;font:inherit;font-size:13px;padding:6px 10px;background:var(--paper);border:1px solid var(--line);border-radius:999px;cursor:pointer;color:var(--ink)}
+.tools button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.tools .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 6px 2px #c8362f88}
+.stage{position:relative;background:#f4f0e6;border-radius:10px;overflow:hidden;touch-action:none}
+#view{display:block;width:100%;aspect-ratio:16/10}
+#view.pointing{cursor:crosshair}
+#view.spinning{cursor:grab}
+.pin{fill:var(--red);stroke:#fff;stroke-width:2}
+.dim{font:600 13px ui-monospace,monospace;fill:var(--ink)}
+.dim.need{fill:var(--red)}
+.dimline{stroke:var(--ink);stroke-width:1.3;fill:none}
+.dimline.need{stroke:var(--red);stroke-dasharray:4 3}
+.status-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.mini{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:13px}
+.mini svg{width:42px;height:42px;flex:none}
+.mini b{display:block}
+.bowl-wrap{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.bowl-wrap svg{width:74px;flex:none}
+.field{border-top:1px solid var(--line);padding:9px 0}
+.field label{display:block;font-weight:600;font-size:13px}
+.field p{margin:1px 0 5px;font-size:12px;color:var(--muted)}
+.field .row{display:flex;gap:6px}
+.field input{width:84px;font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
+.field select{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.badge{font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px}
+.badge.needed{background:#f9dfdc;color:#8f211c}.badge.assumed{background:#f3e8c6;color:#6f5610}.badge.measured{background:#d8eee0;color:#1d5a37}
+.comments{list-style:none;padding:0;margin:8px 0 0;font-size:13px}
+.comments li{padding:5px 0;border-top:1px solid var(--line)}
+.comments input{width:100%;font:inherit;padding:4px;border:1px solid var(--line);border-radius:6px}
+.lives{display:flex;gap:3px;margin-top:4px}
+.lives span{font-size:14px;opacity:.25}.lives span.on{opacity:1}
+@media(max-width:980px){main{grid-template-columns:1fr}.tree svg{max-width:220px;margin:auto}}
+@media(prefers-reduced-motion:reduce){#stagecat{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <img src="../assets/logo.svg" alt="">
+  <div><h1>Calipurr</h1><small>Measure twice, purr once</small></div>
+  <div class="tag" title="Active machine profile"><i></i>Collar tag (machine): my-router</div>
+</header>
+<div class="banner">Mockup with a made-up sample part. Nothing here touches a real file or machine yet.</div>
+<main>
+  <section class="card tree" aria-label="Project stages">
+    <h2>Cat tree <small>project stages</small></h2>
+    <svg viewBox="0 0 170 400" id="tree">
+      <rect x="77" y="30" width="16" height="340" fill="#d8c7a6" stroke="#7d6240" stroke-width="2"/>
+      <path d="M77 60h16M77 70h16M77 150h16M77 160h16M77 240h16M77 250h16M77 330h16" stroke="#a78e63" stroke-width="2"/>
+      <rect x="20" y="368" width="130" height="20" rx="6" fill="#7d6240"/>
+      <g class="perch" data-i="3" tabindex="0" role="button" aria-label="Make stage"><rect x="26" y="40" width="118" height="22" rx="8"/><text x="85" y="56">Make</text></g>
+      <g class="perch" data-i="2" tabindex="0" role="button" aria-label="Check stage"><rect x="26" y="130" width="118" height="22" rx="8"/><text x="85" y="146">Check</text></g>
+      <g class="perch" data-i="1" tabindex="0" role="button" aria-label="Model stage"><rect x="26" y="220" width="118" height="22" rx="8"/><text x="85" y="236">Model</text></g>
+      <g class="perch" data-i="0" tabindex="0" role="button" aria-label="Measure stage"><rect x="26" y="310" width="118" height="22" rx="8"/><text x="85" y="326">Measure</text></g>
+      <g id="stagecat">
+        <path d="M112 0c13 1 18-7 15-14" fill="none" stroke="#1d1d24" stroke-width="5" stroke-linecap="round"/>
+        <ellipse cx="96" cy="-14" rx="20" ry="15" fill="#1d1d24"/>
+        <ellipse cx="88" cy="-9" rx="8" ry="9" fill="#fbf8f1"/>
+        <circle cx="82" cy="-33" r="15" fill="#1d1d24"/>
+        <path d="M70-42l-1-13 11 7zM94-42l1-13-11 7z" fill="#1d1d24"/>
+        <path d="M82-40c-5 6-8 11-8 16 0 4 16 4 16 0 0-5-3-10-8-16z" fill="#fbf8f1"/>
+        <circle cx="76" cy="-35" r="2.5" fill="#e9c74e"/><circle cx="88" cy="-35" r="2.5" fill="#e9c74e"/>
+      </g>
+    </svg>
+    <p class="stage-note" id="stagenote" aria-live="polite"></p>
+  </section>
+
+  <section>
+    <div class="card">
+      <div class="tools" role="toolbar" aria-label="View tools">
+        <button id="spin" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="#c8362f"/><path d="M3 7c5 1 10 5 12 11M7 2c3 3 8 8 10 13M2 12c3 0 6 2 8 6" fill="none" stroke="#fff" stroke-width="1.2"/></svg>Yarn ball: rotate</button>
+        <button id="point" aria-pressed="false"><span class="dot"></span>Laser dot: point at this</button>
+        <button id="dims" aria-pressed="true">Show dimensions</button>
+      </div>
+      <div class="stage"><svg id="view" viewBox="0 0 800 500" role="img" aria-label="Rotatable sample adapter with dimension callouts"></svg></div>
+      <ul class="comments" id="comments" aria-label="Pinned comments"></ul>
+      <div class="status-row">
+        <div class="mini"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 18l18-8 18 8v22H6z" fill="#c7a77d" stroke="#7d6240" stroke-width="2"/><path d="M6 18l18 7 18-7M24 25v15" fill="none" stroke="#7d6240" stroke-width="2"/></svg><div><b>Cardboard box: fit check</b><span id="fit"></span></div></div>
+        <div class="mini"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 24 4 14M24 28H2M24 32 5 40M24 24l20-10M24 28h22M24 32l19 8" stroke="#1d1d24" stroke-width="2.5" stroke-linecap="round"/></svg><div><b>Whiskers: clearance check</b><span id="whiskers"></span></div></div>
+        <div class="mini"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="26" r="15" fill="#6d5c4c"/><path d="M12 20c8-4 18 2 24 10M14 34c6-8 16-10 22-6M22 11c-2 8 2 22 8 29" fill="none" stroke="#3d3229" stroke-width="2"/></svg><div><b>Hairball: problems</b><span id="problems"></span></div></div>
+        <div class="mini"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 20h36l-4 22H10z" fill="#9db4c0" stroke="#465a65" stroke-width="2"/><path d="M12 28c3-2 6 2 9 0s6 2 9 0 5 1 6 0" fill="none" stroke="#465a65" stroke-width="2"/></svg><div><b>Litter box: discarded</b>2 rejected variations</div></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="card" aria-label="Measurements needed">
+    <h2>Food bowl <small>measurements needed</small></h2>
+    <div class="bowl-wrap">
+      <svg viewBox="0 0 90 56" aria-hidden="true"><defs><clipPath id="bowlclip"><path d="M12 16h66l-8 32H20z"/></clipPath></defs><path d="M12 16h66l-8 32H20z" fill="#eee7d7"/><rect id="kibble" x="0" y="48" width="90" height="0" fill="#a8693a" clip-path="url(#bowlclip)"/><path d="M12 16h66l-8 32H20z" fill="none" stroke="#c8362f" stroke-width="3"/></svg>
+      <div id="bowlmsg" aria-live="polite"></div>
+    </div>
+    <div id="fields"></div>
+    <div class="field"><b>Nine lives: version history</b><div class="lives" id="lives" aria-label="Versions used"></div></div>
+  </aside>
+</main>
+<script>
+const FIELDS=[
+  {key:'D1',name:'Bore diameter',ask:'Measure the pipe outside diameter at two spots with calipers.',value:null,status:'needed'},
+  {key:'D2',name:'Outer diameter',ask:'How thick a wall do you want around the bore?',value:38,status:'assumed'},
+  {key:'H',name:'Overall height',ask:'How much room do you have under the gantry?',value:null,status:'needed'},
+  {key:'T',name:'Flange thickness',ask:'Measure the flange on your existing part.',value:6,status:'measured'}];
+const STAGES=['Measure real things and answer the cat.','Model the part from those numbers.','Check fit, clearance and problems.','Export for the printer, router or laser.'];
+const PERCH_Y=[310,220,130,40];
+let yaw=-.6,pitch=.55,mode='spin',showDims=true,pins=[],lives=1;
+
+function el(id){return document.getElementById(id)}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function val(k,fallback){const f=FIELDS.find(x=>x.key===k);return f.value??fallback}
+
+function setStage(i){
+  document.querySelectorAll('.perch').forEach(p=>p.classList.toggle('on',+p.dataset.i===i));
+  el('stagecat').style.transform=`translateY(${PERCH_Y[i]}px)`;
+  el('stagenote').textContent=STAGES[i];
+}
+document.querySelectorAll('.perch').forEach(p=>{
+  p.onclick=()=>setStage(+p.dataset.i);
+  p.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setStage(+p.dataset.i)}};
+});
+
+function project(x,y,z){
+  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const X=x*cy-z*sy,Z=x*sy+z*cy,Y=y*cp-Z*sp,depth=y*sp+Z*cp;
+  return{x:400+X*4.2,y:320-Y*4.2,depth};
+}
+function ring(r,y,n=48){return Array.from({length:n},(_,i)=>{const a=i/n*Math.PI*2;return project(r*Math.cos(a),y,r*Math.sin(a))})}
+function poly(pts,fill,stroke='#3a3a44'){return`<polygon points="${pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width=".7"/>`}
+function tube(rOut,y0,y1,fill){
+  const a=ring(rOut,y0),b=ring(rOut,y1);
+  const quads=a.map((p,i)=>{const j=(i+1)%a.length;return{d:p.depth+a[j].depth+b[i].depth+b[j].depth,pts:[p,a[j],b[j],b[i]]}});
+  quads.sort((m,n)=>m.d-n.d);
+  return quads.map(q=>poly(q.pts,fill,fill)).join('');
+}
+function render(){
+  const d1=val('D1',24),d2=val('D2',38),h=val('H',48),t=val('T',6),fl=d2/2+12;
+  const flangeTop=ring(fl,t),stemTop=ring(d2/2,h),bore=ring(d1/2,h);
+  let s='<ellipse cx="400" cy="345" rx="240" ry="55" fill="#e5decd"/>';
+  s+=tube(fl,0,t,'#8fa7b5')+poly(flangeTop,'#b4c7d1');
+  s+=tube(d2/2,t,h,'#a7bcc8')+poly(stemTop,'#d3dfe5')+poly(bore,'#39444b');
+  if(showDims){
+    s+=callout('D1',project(-d1/2,h,0),project(d1/2,h,0),-46);
+    s+=callout('D2',project(-d2/2,h,0),project(d2/2,h,0),-72);
+    const side=project(fl+10,0,0),sideTop=project(fl+10,h,0);
+    s+=leader('H',side,sideTop,16);
+    const tl=project(-fl-10,0,0),tt=project(-fl-10,t,0);
+    s+=leader('T',tl,tt,-70);
+  }
+  pins.forEach((p,i)=>{s+=`<circle class="pin" cx="${p.x}" cy="${p.y}" r="8"/><text x="${p.x}" y="${p.y+4}" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">${i+1}</text>`});
+  el('view').innerHTML=s;
+}
+function label(k){const f=FIELDS.find(x=>x.key===k);return f.value==null?`${k} = ?`:`${k} = ${f.value} mm`}
+function needs(k){return FIELDS.find(x=>x.key===k).value==null?' need':''}
+function callout(k,a,b,off){
+  const y=Math.min(a.y,b.y)+off,c=needs(k);
+  return`<path class="dimline${c}" d="M${a.x} ${a.y}V${y}H${b.x}V${b.y}"/><text class="dim${c}" x="${(a.x+b.x)/2}" y="${y-5}" text-anchor="middle">${label(k)}</text>`;
+}
+function leader(k,a,b,tx){
+  const c=needs(k);
+  return`<path class="dimline${c}" d="M${a.x} ${a.y}L${b.x} ${b.y}"/><text class="dim${c}" x="${(a.x+b.x)/2+tx}" y="${(a.y+b.y)/2}">${label(k)}</text>`;
+}
+
+function renderFields(){
+  el('fields').innerHTML=FIELDS.map(f=>`<div class="field"><label for="f-${f.key}">${f.key}, ${esc(f.name)}<span class="badge ${f.status}">${f.status}</span></label><p>${esc(f.ask)}</p><div class="row"><input id="f-${f.key}" type="number" min="0.01" step="0.01" inputmode="decimal" value="${f.value??''}" aria-label="${esc(f.name)} in millimeters"><select id="s-${f.key}" aria-label="How you know ${esc(f.name)}"><option value="measured"${f.status==='measured'?' selected':''}>Measured</option><option value="assumed"${f.status==='assumed'?' selected':''}>Assumed</option></select></div></div>`).join('');
+  FIELDS.forEach(f=>{
+    const commit=()=>{
+      const raw=el('f-'+f.key).value,num=parseFloat(raw);
+      const ok=raw!==''&&num>0;
+      const next=ok?num:null,st=ok?el('s-'+f.key).value:'needed';
+      if(next===f.value&&st===f.status)return;
+      f.value=next;f.status=st;
+      if(ok&&lives<9)lives++;
+      renderFields();refresh();
+    };
+    el('f-'+f.key).onchange=commit;el('s-'+f.key).onchange=commit;
+  });
+}
+function refresh(){
+  const missing=FIELDS.filter(f=>f.value==null).length,fed=FIELDS.length-missing;
+  const h=32*fed/FIELDS.length;
+  el('kibble').setAttribute('y',48-h);el('kibble').setAttribute('height',h);
+  el('bowlmsg').textContent=missing?`Emily needs ${missing} more value${missing>1?'s':''}.`:'Bowl full. Emily is purring.';
+  el('fit').textContent=missing?'Waiting on measurements':'If it fits, I sits. Fits sample limits.';
+  el('whiskers').textContent=missing?'Waiting on measurements':'Sample clearance OK';
+  const d1=val('D1',24),d2=val('D2',38);
+  el('problems').textContent=d1>=d2?'Bore is wider than the outer diameter':'None';
+  el('lives').innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<lives?'on':''}">🐾</span>`).join('');
+  render();
+}
+function setMode(m){mode=m;el('spin').setAttribute('aria-pressed',m==='spin');el('point').setAttribute('aria-pressed',m==='point');el('view').className=m==='point'?'pointing':'spinning'}
+el('spin').onclick=()=>setMode('spin');el('point').onclick=()=>setMode('point');
+el('dims').onclick=()=>{showDims=!showDims;el('dims').setAttribute('aria-pressed',showDims);render()};
+
+const view=el('view');let drag=null;
+view.addEventListener('pointerdown',e=>{
+  if(mode==='spin'){drag={x:e.clientX,y:e.clientY};view.setPointerCapture(e.pointerId);return}
+  const pt=new DOMPoint(e.clientX,e.clientY).matrixTransform(view.getScreenCTM().inverse());
+  pins.push({x:+pt.x.toFixed(1),y:+pt.y.toFixed(1),text:''});
+  renderComments(true);render();
+});
+view.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x)*.01;pitch=Math.max(.1,Math.min(1.35,pitch+(e.clientY-drag.y)*.01));drag={x:e.clientX,y:e.clientY};render()});
+view.addEventListener('pointerup',()=>drag=null);
+function renderComments(focus){
+  el('comments').innerHTML=pins.map((p,i)=>`<li><label><b>Dot ${i+1}.</b> <input data-i="${i}" placeholder="Tell Emily about this spot" value="${esc(p.text).replace(/"/g,'&quot;')}"></label></li>`).join('');
+  el('comments').querySelectorAll('input').forEach(n=>n.oninput=()=>pins[+n.dataset.i].text=n.value);
+  if(focus){const all=el('comments').querySelectorAll('input');all[all.length-1].focus()}
+}
+setMode('spin');setStage(0);renderFields();refresh();
+</script>
+</body>
+</html>
