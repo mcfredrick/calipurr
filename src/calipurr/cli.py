@@ -86,6 +86,13 @@ def _hungry(args: argparse.Namespace) -> int:
     return 1 if _report_hungry(args, f"{args.name} is purring. Nothing needed.") else 0
 
 
+def _point(raw: str) -> list[float]:
+    try:
+        return [float(part) for part in raw.split(",")]
+    except ValueError:
+        raise Hiss(f"--at takes comma-separated numbers, got {raw!r}") from None
+
+
 def _shown(entry: dict) -> str:
     value = entry["value"]
     return value if isinstance(value, str) else f"{value:g} {entry.get('unit', 'mm')}"
@@ -102,6 +109,7 @@ def _meow(args: argparse.Namespace) -> int:
         why=args.why,
         required=not args.optional,
         show=args.show,
+        at=[_point(raw) for raw in args.at] if args.at else None,
     )
     if args.json:
         print(json.dumps({args.key: entry}))
@@ -306,7 +314,14 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--choice", action="append", help="an allowed answer; repeat for each one")
     p.add_argument("--why", help="why you need this, shown beside the question")
     p.add_argument("--optional", action="store_true", help="useful, but it won't block progress")
-    p.add_argument("--show", help="a photo or model that shows what you mean")
+    p.add_argument("--show", help="the photo or model that shows it; the GUI opens this when it asks")
+    p.add_argument(
+        "--at",
+        action="append",
+        metavar="X,Y[,Z]",
+        help="where on --show: once for a spot, twice for a dimension's two ends. "
+        "Photos run 0 to 1 across and down; models use model coordinates. Write --at=-1,2,3 for negatives",
+    )
 
     add(sub, "bowl", "params", _bowl, "list questions and answers; exits 1 if required ones are unanswered", project=True)
 

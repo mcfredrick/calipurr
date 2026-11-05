@@ -28,7 +28,7 @@ PHOTO_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 MAX_LIVES = 9
 NUMBER, TEXT, CHOICE = "number", "text", "choice"
 ANSWERED = "answered"
-QUESTION_FIELDS = ("name", "ask", "unit", "kind", "choices", "why", "required", "show")
+QUESTION_FIELDS = ("name", "ask", "unit", "kind", "choices", "why", "required", "show", "at")
 
 
 def positive_number(key: str, raw: object) -> float:
@@ -83,6 +83,7 @@ class Project:
         why: str | None = None,
         required: bool = True,
         show: str | None = None,
+        at: list[list[float]] | None = None,
     ) -> dict:
         """Ask the user something. Rewording keeps the answer unless it no longer fits the question."""
         if not key or not key.replace("_", "").isalnum():
@@ -93,6 +94,13 @@ class Project:
             raise Hiss("Choice questions need choices, and only choice questions can have them")
         if show:
             self.resolve_file(show)
+        if at:
+            if not show:
+                raise Hiss("Marking a spot needs a picture to mark: pass show as well")
+            if len(at) > 2:
+                raise Hiss("A mark is one point, or two for the ends of a dimension")
+            for point in at:
+                self._check_position(show, point)
         params = self.params()
         entry = params.get(key, {"status": NEEDED})
         stale = entry.get("kind", NUMBER) != kind or (choices and entry.get("value") not in choices)
@@ -101,7 +109,7 @@ class Project:
         for field in QUESTION_FIELDS:
             entry.pop(field, None)
         entry.update(name=name, ask=ask, unit=unit, kind=kind, required=required)
-        entry.update({k: v for k, v in (("choices", choices), ("why", why), ("show", show)) if v})
+        entry.update({k: v for k, v in (("choices", choices), ("why", why), ("show", show), ("at", at)) if v})
         params[key] = entry
         self._save_params(params)
         return entry
@@ -204,11 +212,16 @@ class Project:
     def _save_dots(self, dots: list[dict]) -> None:
         _write_atomic(self.dots_path, json.dumps({"dots": dots}, indent=2) + "\n")
 
-    def add_dot(self, file: str, position: list[float], text: str = "") -> dict:
-        path = self.resolve_file(file)
-        size = 3 if path.suffix.lower() in MODEL_SUFFIXES else 2
+    def _check_position(self, file: str, position: list[float]) -> None:
+        on_model = self.resolve_file(file).suffix.lower() in MODEL_SUFFIXES
+        size = 3 if on_model else 2
         if len(position) != size or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in position):
-            raise Hiss(f"A dot on {file} needs {size} finite coordinates")
+            raise Hiss(f"A spot on {file} needs {size} finite coordinates")
+        if not on_model and not all(0 <= v <= 1 for v in position):
+            raise Hiss(f"Spots on a photo run from 0 to 1 across and down, got {position}")
+
+    def add_dot(self, file: str, position: list[float], text: str = "") -> dict:
+        self._check_position(file, position)
         dots = self.dots()
         dot = {"id": max((d["id"] for d in dots), default=0) + 1, "file": file, "position": position, "text": text}
         self._save_dots([*dots, dot])

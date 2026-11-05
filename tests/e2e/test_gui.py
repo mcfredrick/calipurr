@@ -1,7 +1,9 @@
 """Drives the real viewer in Chrome with real mouse events. Run: uv run --group e2e pytest tests/e2e"""
 
 import json
+import struct
 import threading
+import zlib
 
 import pytest
 import trimesh
@@ -46,6 +48,15 @@ def app(browser, tmp_path, monkeypatch):
     server.shutdown()
     server.server_close()
     assert problems == []
+
+
+def blank_png(width, height):
+    def chunk(tag, data):
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
+
+    rows = (b"\0" + b"\xcc" * width) * height
+    header = struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
 
 
 def canvas_center(page):
@@ -282,3 +293,45 @@ def test_polling_keeps_a_half_typed_answer(app):
     project.add_dot("block.stl", [0, 0, 20], "something changed")
     page.wait_for_selector(".pin")
     assert page.input_value("#next input[type=number]") == "7"
+
+
+def test_questions_mark_their_dimension_and_bring_up_the_picture(app):
+    page, project = app
+    (project.root / "photos").mkdir()
+    (project.root / "photos" / "side.png").write_bytes(blank_png(200, 100))
+    project.meow("width", "Width", "Measure it", show="photos/side.png", at=[[0.25, 0.5], [0.75, 0.5]])
+    project.meow("top", "Top", "On the block", show="block.stl", at=[[0, 0, 20]])
+    project.meow("same", "Same spot", "?", show="photos/side.png", at=[[0.25, 0.5], [0.75, 0.5]], required=False)
+
+    page.wait_for_selector('.mark.active[data-key="width"]')
+    assert page.input_value("#file") == "photos/side.png"
+    image = page.locator("#photoimg").bounding_box()
+    stage = page.locator("#stage").bounding_box()
+    line = page.locator('.mark[data-key="width"] .span')
+    x1, x2 = (float(line.get_attribute(a)) for a in ("x1", "x2"))
+    assert x1 == pytest.approx(image["x"] - stage["x"] + image["width"] * 0.25, abs=1)
+    assert x2 == pytest.approx(image["x"] - stage["x"] + image["width"] * 0.75, abs=1)
+
+    # Labels of marks that end in the same place stay readable.
+    def glyph_box(key):
+        return page.locator(f'.mark[data-key="{key}"] text').evaluate(
+            "(n) => { const b = n.getBBox(); return [b.y, b.y + b.height]; }"
+        )
+
+    (top_a, bottom_a), (top_b, bottom_b) = glyph_box("width"), glyph_box("same")
+    assert bottom_a <= top_b or bottom_b <= top_a
+
+    # Marks on other pictures stay off this one.
+    assert page.locator('.mark[data-key="top"]').count() == 0
+
+    # The next question brings its own picture, and the mark shows the answer once there is one.
+    page.fill("#next input[type=number]", "30")
+    page.click("#next .primary")
+    page.wait_for_selector('.mark.active[data-key="top"]')
+    assert page.input_value("#file") == "block.stl"
+
+    page.locator('.field[data-key="width"] button:has-text("Show on picture")').click()
+    page.wait_for_selector('.mark.active[data-key="width"]')
+    assert page.input_value("#file") == "photos/side.png"
+    assert page.text_content('.mark[data-key="width"] text') == "Width: 30 mm"
+    assert "active" in page.get_attribute('.field[data-key="width"]', "class")

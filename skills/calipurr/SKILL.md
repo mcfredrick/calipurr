@@ -26,9 +26,11 @@ The user's machine profiles are the source of truth for machine limits. Every va
 Run these from the part's project folder. Read the user's input before changing the model, because they may have answered questions or commented since you last looked.
 
 - Ask the user anything you need through the GUI, in place of asking in chat, so they can see what's left. Ask in the order you want them answered, because the GUI shows one at a time:
-  - A dimension: `calipurr meow KEY --name "..." --ask "where and how to measure it" --show photos/where.jpg`
+  - A dimension: `calipurr meow KEY --name "..." --ask "how to measure it" --show photos/where.jpg --at 0.1,0.4 --at 0.8,0.55`
   - A decision: `calipurr meow KEY --name "..." --ask "..." --choice "Option A" --choice "Option B"`
   - Anything else: `calipurr meow KEY --name "..." --ask "..." --kind text`
+  - Mark every dimension a picture shows: `--show` names the picture, and `--at` gives the two ends of the dimension, or one point for a depth or a spot. Photo positions run 0 to 1 across and down the picture as displayed. Check placement in the GUI, because a mark in the wrong spot gets the wrong number. If no picture shows it, say where to find it in `--ask`.
+  - Laser dots are the user's and your comments. Don't use them to point out what to measure.
   - Add `--why "..."` when the reason isn't obvious, and `--optional` when you can move on without it. Required questions block progress.
 - Read answers: `calipurr bowl --json`. `ready` is true when no required question is left, and `needed` lists the rest. Build scripts should read `params.toml`.
 - After you finish a turn, say what the user should do next with `calipurr nudge "Print the socket gauge, then report which step fit"`. It appears at the top of the GUI once required questions are answered. Run `calipurr nudge --clear` when that step is done. The GUI can't message you, so the user tells you when they've finished.

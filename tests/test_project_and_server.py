@@ -255,3 +255,30 @@ def test_bowl_and_nudge_tell_an_agent_where_things_stand(project, capsys):
 
     assert main(["nudge", "--clear", *args]) == 0
     assert project.next_step() == ""
+
+
+@pytest.mark.parametrize(
+    "at",
+    [
+        [[0.5]],
+        [[0.5, 1.5]],
+        [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+    ],
+)
+def test_marks_must_fit_their_picture(project, at):
+    (project.root / "side.jpg").write_bytes(b"x")
+    with pytest.raises(Hiss):
+        project.meow("q", "Q", "?", show="side.jpg", at=at)
+
+
+def test_marks_survive_answers_and_need_a_picture(project, capsys):
+    from calipurr.cli import main
+
+    (project.root / "side.jpg").write_bytes(b"x")
+    with pytest.raises(Hiss, match="picture"):
+        project.meow("q", "Q", "?", at=[[0.1, 0.1]])
+
+    args = ["--project", str(project.root), "--name", "Q", "--ask", "?", "--show", "side.jpg"]
+    assert main(["meow", "q", *args, "--at", "0.1,0.2", "--at", "0.3,0.4"]) == 0
+    assert project.answer("q", 5)["at"] == [[0.1, 0.2], [0.3, 0.4]]
+    assert project.forget("q")["at"] == [[0.1, 0.2], [0.3, 0.4]]

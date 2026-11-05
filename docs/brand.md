@@ -12,7 +12,7 @@ Each cat object does a real job, chosen because cat behavior already resembles t
 | Cat thing | Plain label | What it does | Why it fits |
 |---|---|---|---|
 | Cat tree | Project stages | Vertical navigation with a perch per stage (Measure, Model, Check, Make). Emily sits on the current one | Cats climb as things get interesting |
-| Laser dot | Point at this | Click the model to pin a comment to a 3D location | Everyone stares at the dot |
+| Laser dot | Point at this | Click a model or photo to pin a comment to that spot. Comments only: dimensions get marks | Everyone stares at the dot |
 | Next-step card | What Emily needs next | Asks one question at a time across the top of the page and says plainly who has the next move | The cat stares at you until you act |
 | Food bowl | Questions and answers | Every question and answer in one list, editable. The bowl fills as required answers come in | The cat tells you when something is missing |
 | Yarn ball | Rotate | Drag to rotate the model | Batting a ball around |

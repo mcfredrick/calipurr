@@ -290,15 +290,104 @@ function syncPins() {
   });
 }
 
+// Where each question's dimension sits on the picture. Unlike dots, these belong to the question.
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const marksLayer = overlay.appendChild(document.createElementNS(SVG_NS, 'svg'));
+marksLayer.id = 'marks';
+let marks = [];
+
+function svg(tag, attrs = {}) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  return node;
+}
+
+function markLabel(key, entry) {
+  const name = entry.name || key;
+  if (entry.value === undefined) return name;
+  return typeof entry.value === 'number' ? `${name}: ${entry.value} ${entry.unit || 'mm'}` : `${name}: ${entry.value}`;
+}
+
+function syncMarks() {
+  const entries = ui.state ? Object.entries(ui.state.params).filter(([, e]) => e.at && e.show === ui.file) : [];
+  // Drawn last so the current question sits on top of the others.
+  entries.sort(([a], [b]) => (a === ui.activeMark) - (b === ui.activeMark));
+  marks = entries.map(([key, entry]) => {
+    const active = key === ui.activeMark;
+    const group = svg('g', { class: `mark${active ? ' active' : ''}`, 'data-key': key });
+    const halo = svg('line', { class: 'halo' });
+    const line = svg('line', { class: 'span' });
+    const ends = entry.at.map(() => svg('circle', { r: active ? 4.5 : 3 }));
+    const leader = svg('line', { class: 'leader' });
+    const text = svg('text');
+    text.textContent = markLabel(key, entry);
+    text.onclick = () => {
+      setActiveMark(key);
+      document.querySelector(`.field[data-key="${key}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    };
+    group.append(halo, line, leader, ...ends, text);
+    return { entry, active, group, halo, line, leader, ends, text };
+  });
+  marksLayer.replaceChildren(...marks.map((m) => m.group));
+}
+
+function setActiveMark(key) {
+  ui.activeMark = key;
+  syncMarks();
+  document.querySelectorAll('.field[data-key]').forEach((node) => node.classList.toggle('active', node.dataset.key === key));
+}
+
+function placeMarks(locate, width) {
+  const taken = [];
+  // Backwards, so the current question's label gets first pick of the space.
+  for (const mark of [...marks].reverse()) {
+    mark.group.style.display = ui.showDims || mark.active ? '' : 'none';
+    const [a, b = a] = mark.entry.at.map(locate);
+    for (const line of [mark.halo, mark.line]) {
+      line.setAttribute('x1', a.x);
+      line.setAttribute('y1', a.y);
+      line.setAttribute('x2', b.x);
+      line.setAttribute('y2', b.y);
+    }
+    [a, b].slice(0, mark.ends.length).forEach((point, index) => {
+      mark.ends[index].setAttribute('cx', point.x);
+      mark.ends[index].setAttribute('cy', point.y);
+    });
+    // The label continues past the line's end so it doesn't cover what's being measured.
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    const along = length ? { x: (b.x - a.x) / length, y: (b.y - a.y) / length } : { x: 1, y: 0 };
+    const roomRight = b.x + 12 * along.x < width - 190;
+    const labelX = b.x + 12 * along.x;
+    const labelY = b.y + 12 * along.y + 4;
+    mark.text.setAttribute('x', labelX);
+    mark.text.setAttribute('y', labelY);
+    mark.text.setAttribute('text-anchor', along.x >= 0 && roomRight ? 'start' : 'end');
+    const box = mark.text.getBBox();
+    let shift = 0;
+    const hits = (other) => box.x < other.x + other.width && other.x < box.x + box.width
+      && box.y + shift < other.y + other.height && other.y < box.y + shift + box.height;
+    while (taken.some(hits)) shift += box.height + 6;
+    taken.push({ x: box.x, y: box.y + shift, width: box.width, height: box.height });
+    mark.text.setAttribute('y', labelY + shift);
+    mark.leader.style.display = shift ? '' : 'none';
+    mark.leader.setAttribute('x1', b.x);
+    mark.leader.setAttribute('y1', b.y);
+    mark.leader.setAttribute('x2', labelX);
+    mark.leader.setAttribute('y2', labelY + shift - 4);
+  }
+}
+
 function placeOverlay() {
   const photo = isPhoto();
   const image = $('photoimg').getBoundingClientRect();
   const frame = stage.getBoundingClientRect();
+  const locate = (p) => (photo
+    ? { x: image.left - frame.left + p[0] * image.width, y: image.top - frame.top + p[1] * image.height }
+    : toScreen(p));
+  placeMarks(locate, frame.width);
   for (const node of pins.values()) {
-    const p = node.__position;
-    const at = photo
-      ? { x: image.left - frame.left + p[0] * image.width, y: image.top - frame.top + p[1] * image.height }
-      : toScreen(p);
+    const at = locate(node.__position);
     node.style.left = `${at.x}px`;
     node.style.top = `${at.y}px`;
   }
@@ -489,7 +578,13 @@ function renderBowl() {
     ? 'Nothing asked yet.'
     : missing ? `${missing} required answer${missing > 1 ? 's' : ''} to go.` : 'Bowl full. Emily is purring.';
 
-  $('fields').replaceChildren(...params.map(([key, entry]) => fieldNode(key, entry)));
+  $('fields').replaceChildren(...params.map(([key, entry]) => {
+    const node = fieldNode(key, entry);
+    node.dataset.key = key;
+    node.classList.toggle('active', key === ui.activeMark);
+    if (entry.at) node.querySelector('.title').after(showOnPicture(key, entry));
+    return node;
+  }));
   const build = ui.state.build;
   const buildNode = $('buildstatus');
   buildNode.hidden = !build.configured;
@@ -498,6 +593,14 @@ function renderBowl() {
     buildNode.replaceChildren(h('b', {}, 'Rebuild'), h('div', {}, text));
     if (build.ok === false) buildNode.append(h('pre', { class: 'buildlog' }, build.output));
   }
+}
+
+function showOnPicture(key, entry) {
+  return h('button', { type: 'button', class: 'linkish', onclick: () => {
+    if (ui.file !== entry.show) selectFile(entry.show);
+    setActiveMark(key);
+    stage.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } }, 'Show on picture');
 }
 
 function answerInput(key, entry, id) {
@@ -600,15 +703,12 @@ function questionCard(key, entry, total) {
     document.querySelector('#next textarea, #next input:not([type=radio])')?.focus();
   };
   if (entry.kind !== 'text') control.addEventListener('keydown', (event) => { if (event.key === 'Enter') save(); });
-  const showMe = entry.show ? h('button', { type: 'button', class: 'linkish', onclick: () => {
-    selectFile(entry.show);
-    $('stage').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  } }, 'Show me where') : null;
   return emilyCard('', `EMILY NEEDS YOU: ${total} question${total > 1 ? 's' : ''} left`, entry.name || key,
     h('div', { class: 'progress', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': ui.requiredTotal, 'aria-valuenow': ui.requiredTotal - total },
       h('i', { style: `width:${ui.requiredTotal ? (ui.requiredTotal - total) / ui.requiredTotal * 100 : 0}%` })),
     h('p', { class: 'ask' }, entry.ask || ''),
     entry.why ? h('p', { class: 'why' }, entry.why) : null,
+    status && !entry.at ? h('p', { class: 'why' }, "This one isn't marked on a picture.") : null,
     h('div', { class: 'row' }, control, status ? h('span', {}, entry.unit || 'mm') : null, status),
     h('div', { class: 'actions' },
       h('button', { type: 'button', class: 'primary', onclick: save }, total > 1 ? 'Save and next' : 'Save'),
@@ -616,7 +716,6 @@ function questionCard(key, entry, total) {
         ui.skipped.add(key);
         renderNext();
       } }, 'Skip for now'),
-      showMe,
     ));
 }
 
@@ -653,8 +752,15 @@ function renderNext() {
     if (ui.shownQuestion === shown) return;
     ui.shownQuestion = shown;
     node.replaceChildren(questionCard(key, entry, needed.length));
+    if (ui.askedKey !== key) {
+      ui.askedKey = key;
+      ui.activeMark = key;
+      if (entry.show && entry.show !== ui.file) selectFile(entry.show);
+    }
     return;
   }
+  if (ui.shownQuestion) ui.activeMark = null;
+  ui.askedKey = null;
   ui.shownQuestion = null;
   if (ui.state.next) {
     node.replaceChildren(emilyCard('', 'YOUR NEXT STEP', ui.state.next,
@@ -883,6 +989,7 @@ function renderAll() {
   renderLitter();
   renderChecks();
   renderStage();
+  syncMarks();
 }
 
 async function runCheck() {
