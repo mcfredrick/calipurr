@@ -34,6 +34,8 @@ Fit results get saved with the project and the machine, including material and s
 ## Proposed GUI
 
 - A **kitten** can be attached to any food bowl value: "Not sure? Make a test piece."
-- A report card shows the gauge with its lettered steps, asks which letter fit and what it measured, and fills in the value as `measured`.
+- A report card shows the gauge with its steps. The user clicks the step that fit on the 3D model, or picks its letter, then enters what it measured. That fills in the value as `measured`.
+- Clicking a step highlights it and shows its letter, modeled size and which end of the gauge it's near, so the user can match it against the part in their hand. This also covers gauges too small for readable labels, where the skill's agent would otherwise need a text description.
+- The gauge command saves which height range belongs to each step, so a click maps to an exact size.
 - A **cardboard box** view shows the kittens tried so far and what each one proved.
 - Laser dots work on photos as well as models, so users can mark up a picture of their real machine.
