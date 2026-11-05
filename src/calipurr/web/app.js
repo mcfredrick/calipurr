@@ -754,8 +754,8 @@ function renderNext() {
     node.replaceChildren(questionCard(key, entry, needed.length));
     if (ui.askedKey !== key) {
       ui.askedKey = key;
-      ui.activeMark = key;
       if (entry.show && entry.show !== ui.file) selectFile(entry.show);
+      setActiveMark(key);
     }
     return;
   }

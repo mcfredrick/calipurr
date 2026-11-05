@@ -335,3 +335,13 @@ def test_questions_mark_their_dimension_and_bring_up_the_picture(app):
     assert page.input_value("#file") == "photos/side.png"
     assert page.text_content('.mark[data-key="width"] text') == "Width: 30 mm"
     assert "active" in page.get_attribute('.field[data-key="width"]', "class")
+
+
+def test_skipping_moves_the_highlight_between_marks_on_one_picture(app):
+    page, project = app
+    project.meow("first", "First", "?", show="block.stl", at=[[0, 0, 20]])
+    project.meow("second", "Second", "?", show="block.stl", at=[[10, 0, 20]])
+    page.wait_for_selector('.mark.active[data-key="first"]')
+    page.click("#next button:has-text('Skip')")
+    page.wait_for_selector('.mark.active[data-key="second"]')
+    assert page.locator(".mark.active").count() == 1
