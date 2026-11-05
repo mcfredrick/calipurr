@@ -1,0 +1,199 @@
+import json
+import sys
+import threading
+import time
+import urllib.error
+import urllib.request
+
+import pytest
+import trimesh
+
+from calipurr import profiles
+from calipurr.errors import Hiss
+from calipurr.project import MAX_LIVES, Project
+from calipurr.server import make_server
+
+
+@pytest.fixture
+def project(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    root = tmp_path / "part"
+    root.mkdir()
+    trimesh.creation.box(extents=(10, 10, 10)).export(root / "part.stl")
+    return Project(root)
+
+
+def test_values_track_where_they_came_from_and_can_be_forgotten(project):
+    project.meow("D1", "Bore", "Measure it")
+    assert project.hungry() == {"D1": "Measure it"}
+    project.answer("D1", "26.7", "assumed", "from a catalog")
+    entry = project.params()["D1"]
+    assert (entry["value"], entry["status"], entry["note"]) == (26.7, "assumed", "from a catalog")
+    # Rewording a question must not throw away its answer.
+    project.meow("D1", "Bore", "Measure it twice")
+    assert project.params()["D1"]["value"] == 26.7
+    project.forget("D1")
+    assert "value" not in project.params()["D1"] and project.params()["D1"]["status"] == "needed"
+
+
+@pytest.mark.parametrize("raw", ["wide", "-1", "0", "nan", "inf", None])
+def test_bad_values_are_refused(project, raw):
+    project.meow("D1", "Bore", "Measure it")
+    with pytest.raises(Hiss):
+        project.answer("D1", raw)
+    assert project.params()["D1"]["status"] == "needed"
+
+
+def test_nine_lives_keeps_history_and_restores(project):
+    project.meow("D1", "Bore", "Measure it")
+    for value in range(1, 16):
+        project.answer("D1", value)
+    lives = project.lives()
+    assert len(lives) == MAX_LIVES - 1
+    assert lives[-1]["values"]["D1"] == 14
+    project.restore_life(lives[-1]["id"])
+    assert project.params()["D1"]["value"] == 14
+    # Restoring is itself reversible.
+    assert project.lives()[-1]["values"]["D1"] == 15
+
+
+def test_dots_keep_stable_ids_and_validate_position(project):
+    first = project.add_dot("part.stl", [1, 2, 3], "here")
+    second = project.add_dot("part.stl", [4, 5, 6])
+    project.remove_dot(first["id"])
+    third = project.add_dot("part.stl", [7, 8, 9])
+    assert [d["id"] for d in project.dots()] == [second["id"], third["id"]]
+    assert third["id"] > second["id"]
+    for bad in ([1, 2], [1, 2, float("inf")], ["a", 2, 3]):
+        with pytest.raises(Hiss):
+            project.add_dot("part.stl", bad)
+
+
+def test_photo_dots_use_two_coordinates(project):
+    (project.root / "machine.jpg").write_bytes(b"not really an image")
+    assert project.add_dot("machine.jpg", [0.25, 0.5], "this clamp")["position"] == [0.25, 0.5]
+
+
+def test_litter_box_round_trip(project):
+    assert project.discard("part.stl") == "litter/part.stl"
+    assert project.files()["models"] == []
+    assert project.rescue("litter/part.stl") == "part.stl"
+    assert [f["name"] for f in project.files()["models"]] == ["part.stl"]
+
+
+@pytest.mark.parametrize("name", ["../secret.stl", "/etc/passwd", "../../x.jpg", "params.toml", ".calipurr/lives/1.toml"])
+def test_only_project_models_and_photos_can_be_opened(project, name):
+    (project.root.parent / "secret.stl").write_text("outside")
+    project.meow("D1", "Bore", "Measure it")
+    with pytest.raises(Hiss):
+        project.resolve_file(name)
+
+
+@pytest.fixture
+def served(project):
+    def start(build=None):
+        server = make_server(project, build=build)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        servers.append(server)
+        return f"127.0.0.1:{server.server_address[1]}"
+
+    servers = []
+    yield start
+    for server in servers:
+        server.shutdown()
+        server.server_close()
+
+
+def call(host, route, body=None, **headers):
+    data = None if body is None else json.dumps(body).encode()
+    all_headers = {"Host": host}
+    if body is not None:
+        all_headers |= {"Origin": f"http://{host}", "Content-Type": "application/json"}
+    all_headers |= {k.replace("_", "-"): v for k, v in headers.items()}
+    request = urllib.request.Request(f"http://{host}{route}", data=data, headers=all_headers)
+    try:
+        with urllib.request.urlopen(request) as response:
+            return response.status, response.read()
+    except urllib.error.HTTPError as err:
+        return err.code, err.read()
+
+
+def test_server_serves_the_viewer_and_project_files(project, served):
+    host = served()
+    assert call(host, "/")[0] == 200
+    assert call(host, "/vendor/three.module.min.js")[0] == 200
+    status, body = call(host, "/file/part.stl")
+    assert status == 200 and len(body) > 100
+    state = json.loads(call(host, "/api/state")[1])
+    assert state["files"]["models"][0]["name"] == "part.stl"
+
+
+@pytest.mark.parametrize("route", ["/file/../params.toml", "/file/%2e%2e/%2e%2e/etc/passwd", "/../server.py", "/.hidden"])
+def test_server_blocks_paths_outside_its_files(project, served, route):
+    assert call(served(), route)[0] == 404
+
+
+def test_server_rejects_foreign_sites(project, served):
+    host = served()
+    # DNS rebinding arrives with another site's name in Host.
+    assert call(host, "/api/state", Host="evil.example")[0] == 403
+    # A cross-site form or fetch can't name Calipurr as its origin.
+    body = {"file": "part.stl", "position": [0, 0, 0]}
+    assert call(host, "/api/dots", body, Origin="https://evil.example")[0] == 403
+    assert project.dots() == []
+    request = urllib.request.Request(f"http://{host}/api/dots", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+    with pytest.raises(urllib.error.HTTPError) as err:
+        urllib.request.urlopen(request)
+    assert err.value.code == 403
+    assert call(host, "/api/dots", body, Content_Type="text/plain")[0] == 415
+
+
+def test_server_full_gauge_loop(project, served):
+    host = served()
+    project.meow("D1", "Bore", "Measure it")
+    made = json.loads(call(host, "/api/kitten/gauge", {"from": 20, "to": 20.4, "step": 0.2, "for": "D1"})[1])["result"]
+    report = {"name": made["name"], "letter": "B", "measured": 19}
+    status, body = call(host, "/api/kitten/report", report)
+    assert status == 409 and json.loads(body)["needs_confirmation"]
+    assert call(host, "/api/kitten/report", report | {"measured": 20.1})[0] == 200
+    state = json.loads(call(host, "/api/state")[1])
+    assert state["params"]["D1"]["value"] == 20.2
+    check = json.loads(call(host, f"/api/check?file={made['file']}")[1])
+    assert {c["id"] for c in check["checks"]} >= {"solid", "bed", "overhang", "fit", "clearance"}
+
+
+def test_server_reports_bad_requests_plainly(project, served):
+    host = served()
+    status, body = call(host, "/api/params", {"key": "ghost", "value": 1})
+    assert status == 400 and "ghost" in json.loads(body)["error"]
+    assert call(host, "/api/params", {"value": 1})[0] == 400
+
+
+def wait_for_build(host):
+    for _ in range(100):
+        build = json.loads(call(host, "/api/state")[1])["build"]
+        if not build["running"] and build["ok"] is not None:
+            return build
+        time.sleep(0.05)
+    raise AssertionError("build never finished")
+
+
+def test_rebuild_runs_after_a_value_changes_and_reports_failure(project, served):
+    project.meow("D1", "Bore", "Measure it")
+    host = served(f'{sys.executable} -c "import pathlib;pathlib.Path(\'built.txt\').write_text(\'yes\')"')
+    assert call(host, "/api/params", {"key": "D1", "value": 5})[0] == 200
+    assert wait_for_build(host)["ok"] is True
+    assert (project.root / "built.txt").read_text() == "yes"
+
+    failing = served(f'{sys.executable} -c "raise SystemExit(\'boom\')"')
+    call(failing, "/api/params", {"key": "D1", "value": 6})
+    build = wait_for_build(failing)
+    assert build["ok"] is False and "boom" in build["output"]
+
+
+def test_machine_values_can_be_fed_through_the_server(project, served):
+    profiles.adopt("p", "printer")
+    host = served()
+    assert call(host, "/api/machine/feed", {"name": "p", "key": "build_x_mm", "value": 256, "status": "measured"})[0] == 200
+    assert profiles.load("p")["fields"]["build_x_mm"]["value"] == 256

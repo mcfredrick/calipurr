@@ -24,12 +24,12 @@ Skip the kitten when it would take about as long as the real part, or when a fai
 
 ## Designing a stepped gauge
 
-- Span the expected size in both directions. Steps of 0.2 mm suit FDM printing as a starting point.
+- Use `calipurr kitten gauge`, which handles the labels and the size table. Span the expected size in both directions. Steps of 0.2 mm suit FDM printing as a starting point.
 - Print it in the same orientation and material as the final part, because both change the fit.
 - Label every step so the user can report a result by name. Counting steps from an end is easy to get wrong.
 - Use one letter per step (A, B, C), and give the user a table of each letter's modeled size. Letters stay readable at sizes where a number like 20.9 won't.
 - Cut labels into the surface instead of raising them, so they can't change the fit. Keep them on the mating surface only if there's no other place, and make the steps tall enough to read them. About 6 mm is a starting point for FDM.
-- Ask for the result by letter, such as "C goes in snugly, D won't enter." If the steps are too small to label and the user has the Calipurr GUI, they can select the step on the model. Otherwise, name each step by its position from a clearly different end, and have them measure the step to confirm.
+- Ask for the result by letter, such as "C goes in snugly, D won't enter." If the steps are too small to label, the user can pick the step on the model in the Calipurr GUI. Otherwise, name each step by its position from a clearly different end, and have them measure the step to confirm.
 
 ## Closing the loop
 
@@ -42,10 +42,10 @@ Example: a gauge step modeled at 20.9 mm printed at 20.75 mm and fit a tube meas
 
 ## Check before sending a print
 
-- Confirm the export is a closed solid after reloading the saved file, because saving can collapse slivers.
+- Run `calipurr purrflight`, which reloads the saved file to confirm it's a closed solid, because saving can collapse slivers.
 - Check the part sits flat on the bed in its intended orientation, with enough contact to stay stuck. Tell the user how it should be oriented.
 - Look for overhangs and unsupported starts. A part that begins printing in mid-air will fail.
-- Open the file's original design intent before changing it. If the original design rested a feature on the bed, keep that unless there's a reason not to.
+- Look at how an original design was oriented before changing it. If it rested a feature on the bed, keep that unless there's a reason not to.
 
 ## When a test fails
 

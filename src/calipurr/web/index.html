@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calipurr</title>
+<link rel="icon" href="/logo.svg">
+<link rel="stylesheet" href="/style.css">
+<script type="importmap">{"imports":{"three":"/vendor/three.module.min.js"}}</script>
+</head>
+<body>
+<header>
+  <img src="/logo.svg" alt="">
+  <div><h1>Calipurr</h1><small id="project"></small></div>
+  <label class="tag"><i aria-hidden="true"></i>Collar tag (machine)
+    <select id="machine"></select>
+  </label>
+</header>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<main>
+  <section class="card tree" aria-label="Project stages">
+    <h2>Cat tree <small>project stages</small></h2>
+    <svg viewBox="0 -40 170 440" id="tree">
+      <rect x="77" y="30" width="16" height="340" fill="#d8c7a6" stroke="#7d6240" stroke-width="2"/>
+      <path d="M77 60h16M77 70h16M77 150h16M77 160h16M77 240h16M77 250h16M77 330h16" stroke="#a78e63" stroke-width="2"/>
+      <rect x="20" y="368" width="130" height="20" rx="6" fill="#7d6240"/>
+      <g class="perch" data-i="3" tabindex="0" role="button" aria-label="Make stage"><rect x="26" y="40" width="118" height="22" rx="8"/><text x="85" y="56">Make</text></g>
+      <g class="perch" data-i="2" tabindex="0" role="button" aria-label="Check stage"><rect x="26" y="130" width="118" height="22" rx="8"/><text x="85" y="146">Check</text></g>
+      <g class="perch" data-i="1" tabindex="0" role="button" aria-label="Model stage"><rect x="26" y="220" width="118" height="22" rx="8"/><text x="85" y="236">Model</text></g>
+      <g class="perch" data-i="0" tabindex="0" role="button" aria-label="Measure stage"><rect x="26" y="310" width="118" height="22" rx="8"/><text x="85" y="326">Measure</text></g>
+      <g id="stagecat">
+        <path d="M116 -1c14 1 19-8 15-16" fill="none" stroke="#1d1d24" stroke-width="5" stroke-linecap="round"/>
+        <ellipse cx="98" cy="-13" rx="22" ry="14" fill="#1d1d24"/>
+        <ellipse cx="86" cy="-9" rx="9" ry="9" fill="#fbf8f1"/>
+        <path d="M61-44l-3-19 15 9zM95-44l3-19-15 9z" fill="#1d1d24"/>
+        <path d="M63-49l-1-8 6 4zM93-49l1-8-6 4z" fill="#ec9fa4"/>
+        <ellipse cx="78" cy="-36" rx="20" ry="17" fill="#1d1d24"/>
+        <path d="M78-50c-6 8-12 14-12 22 0 7 6 9 12 9s12-2 12-9c0-8-6-14-12-22z" fill="#fbf8f1"/>
+        <ellipse cx="68.5" cy="-38" rx="5" ry="5.5" fill="#e9c74e"/><ellipse cx="87.5" cy="-38" rx="5" ry="5.5" fill="#e9c74e"/>
+        <ellipse cx="69" cy="-37.5" rx="2" ry="4.6" fill="#111116"/><ellipse cx="87" cy="-37.5" rx="2" ry="4.6" fill="#111116"/>
+        <circle cx="70" cy="-40" r="1.2" fill="#fff"/><circle cx="88" cy="-40" r="1.2" fill="#fff"/>
+        <path d="M75-30h6l-3 3.5z" fill="#ec8f96"/>
+        <path d="M78-26.5c0 3-3 4-5.5 2.5M78-26.5c0 3 3 4 5.5 2.5" fill="none" stroke="#1d1d24" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M66-30l-18-3M66-27l-18 3M90-30l18-3M90-27l18 3" stroke="#8d8d96" stroke-width="1.2" stroke-linecap="round"/>
+      </g>
+    </svg>
+    <p class="stage-note" id="stagenote" aria-live="polite"></p>
+  </section>
+
+  <section class="middle">
+    <div class="card">
+      <div class="tools" role="toolbar" aria-label="View tools">
+        <label class="filepick">File <select id="file"></select></label>
+        <button id="spin" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="#c8362f"/><path d="M3 7c5 1 10 5 12 11M7 2c3 3 8 8 10 13M2 12c3 0 6 2 8 6" fill="none" stroke="#fff" stroke-width="1.2"/></svg>Yarn ball: rotate</button>
+        <button id="point" aria-pressed="false"><span class="dot" aria-hidden="true"></span>Laser dot: point at this</button>
+        <button id="paw" aria-pressed="false" hidden><span aria-hidden="true">🐾</span>Paw: pick a step</button>
+        <button id="dims" aria-pressed="true">Show dimensions</button>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="view" aria-label="3D view of the selected model"></canvas>
+        <div id="photo" hidden><img id="photoimg" alt="Selected photo"></div>
+        <div id="overlay" aria-hidden="false"></div>
+        <div id="empty" hidden>Drop an STL or photo in this folder and it'll appear here.</div>
+      </div>
+      <ul class="comments" id="comments" aria-label="Laser dot comments"></ul>
+      <div id="report" class="report" hidden></div>
+      <div class="status-row">
+        <div class="mini"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 18l18-8 18 8v22H6z" fill="#c7a77d" stroke="#7d6240" stroke-width="2"/><path d="M6 18l18 7 18-7M24 25v15" fill="none" stroke="#7d6240" stroke-width="2"/></svg><div><b>Cardboard box: fit check</b><span id="fit"></span></div></div>
+        <div class="mini"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 24 4 14M24 28H2M24 32 5 40M24 24l20-10M24 28h22M24 32l19 8" stroke="#1d1d24" stroke-width="2.5" stroke-linecap="round"/></svg><div><b>Whiskers: clearance check</b><span id="whiskers"></span></div></div>
+        <div class="mini"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="26" r="15" fill="#6d5c4c"/><path d="M12 20c8-4 18 2 24 10M14 34c6-8 16-10 22-6M22 11c-2 8 2 22 8 29" fill="none" stroke="#3d3229" stroke-width="2"/></svg><div><b>Hairball: problems</b><span id="problems"></span></div></div>
+        <div class="mini"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 20h36l-4 22H10z" fill="#9db4c0" stroke="#465a65" stroke-width="2"/><path d="M12 28c3-2 6 2 9 0s6 2 9 0 5 1 6 0" fill="none" stroke="#465a65" stroke-width="2"/></svg><div><b>Litter box: discarded</b><div id="litter"></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="card" aria-label="Measurements needed">
+    <h2>Food bowl <small>measurements needed</small></h2>
+    <div class="bowl-wrap">
+      <svg viewBox="0 0 90 56" aria-hidden="true"><defs><clipPath id="bowlclip"><path d="M12 16h66l-8 32H20z"/></clipPath></defs><path d="M12 16h66l-8 32H20z" fill="#eee7d7"/><rect id="kibble" x="0" y="48" width="90" height="0" fill="#a8693a" clip-path="url(#bowlclip)"/><path d="M12 16h66l-8 32H20z" fill="none" stroke="#c8362f" stroke-width="3"/></svg>
+      <div id="bowlmsg" aria-live="polite"></div>
+    </div>
+    <div id="fields"></div>
+    <div id="buildstatus" class="field" hidden></div>
+    <div class="field"><b>Nine lives: version history</b><div class="lives" id="lives" role="group" aria-label="Earlier versions of these values"></div></div>
+    <div class="field" id="machinepanel"></div>
+  </aside>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

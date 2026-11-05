@@ -1,6 +1,6 @@
 # Test-fit support: design note
 
-Status: proposed. The playbook in `skills/calipurr/references/test-fit.md` works today. The commands and GUI below don't exist yet.
+Status: mostly built. The sections below note what is still open.
 
 ## Where this came from
 
@@ -13,29 +13,25 @@ A real project adapted an MPCNC dust collection part from 1 in tube to 3/4 in EM
 - A test print showed the suction ring sat about 10 mm off, which corrected a value in the model.
 - The user questioned whether the ring was needed at all, which led to a simpler nozzle.
 
-## Proposed loop
+## The loop
 
 ```
 assumption -> kitten -> print or cut -> user reports -> value marked measured -> model rebuilds
 ```
 
-## Proposed CLI
+## Built
 
-| Command | Job |
-|---|---|
-| `calipurr kitten gauge --from 20.3 --to 21.1 --step 0.2` | Generate a stepped gauge STL |
-| `calipurr kitten cut part.stl --keep-above 139` | Slice one feature out of a model |
-| `calipurr purrflight part.stl --machine NAME` | Check the part is a closed solid, fits the machine, and sits on the bed |
+- `calipurr kitten gauge`, `kitten cut`, `kitten report` and `purrflight`
+- Lettered gauge steps, with step picking on the 3D model as an alternative to reading a label
+- A report card that warns when a caliper reading is more than one step from the chosen step
+- Test pieces started from any food bowl value
+- Laser dots on models and photos
 
-Gauges are always labeled. Each step gets a recessed letter, and the command prints a table of letters and modeled sizes. This comes from the same project, where the unlabeled gauge made it hard to say which step worked. Label legibility on small curved steps still needs a real print test, and tally marks are the fallback if letters don't hold up.
+## Still open
 
-Fit results get saved with the project and the machine, including material and settings, so later parts can start from a known offset. The tool would suggest that offset, marked `assumed`, and still recommend a gauge when the fit matters.
-
-## Proposed GUI
-
-- A **kitten** can be attached to any food bowl value: "Not sure? Make a test piece."
-- A report card shows the gauge with its steps. The user clicks the step that fit on the 3D model, or picks its letter, then enters what it measured. That fills in the value as `measured`.
-- Clicking a step highlights it and shows its letter, modeled size and which end of the gauge it's near, so the user can match it against the part in their hand. This also covers gauges too small for readable labels, where the skill's agent would otherwise need a text description.
-- The gauge command saves which height range belongs to each step, so a click maps to an exact size.
-- A **cardboard box** view shows the kittens tried so far and what each one proved.
-- Laser dots work on photos as well as models, so users can mark up a picture of their real machine.
+- Label legibility on small curved steps needs a real print test. Tally marks are the fallback if letters don't hold up.
+- Overhang warnings need tuning against more real prints. In the first comparison, parts that printed fine still got a mid-air warning, with about 870 mm2 of overhang, against about 3090 mm2 on a saved failed orientation.
+- Saved fit results don't yet suggest a starting offset for the next part. When they do, the suggestion should be marked `assumed`, and a gauge should still be recommended when the fit matters.
+- A cardboard box view of the kittens tried so far and what each one proved.
+- Laser cutter output, and 2D files in the viewer.
+- Laser dots show through the model when they're on its far side.

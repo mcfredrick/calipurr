@@ -30,12 +30,19 @@ A **kitten** (plain label: test piece) is a small print or cut that answers one 
 
 | Pun | Plain alias | Job |
 |---|---|---|
+| `serve` | `gui` | Open the visual interface |
 | `adopt` | `add` | Add a machine |
 | `litter` | `list` | List machines |
 | `vet` | `show` | Inspect a machine's values |
-| `feed` | `set` | Record a value |
-| `hungry` | `missing` | List values still needed |
+| `feed` | `set` | Record a machine value |
+| `hungry` | `missing` | List machine values still needed |
+| `meow` | `ask` | Ask for a part dimension |
+| `bowl` | `params` | List part dimensions |
+| `treat` | `answer` | Record a part dimension |
+| `dots` | `comments` | Read laser dot comments |
+| `kitten` | `test-piece` | Make and report test pieces |
+| `purrflight` | `check` | Pre-flight check |
 
 ## Pun bank
 
-`purrflight` (pre-flight check), `pawprint` (footprint or bounding box), `scratch` (rough cut), `purr-fect fit` (a passing fit test), `meow` (a question for the user), `cat-alog` (parts library), `hiss` (blocked operation, with the reason in plain words).
+`pawprint` (footprint or bounding box), `scratch` (rough cut), `purr-fect fit` (a passing fit test), `cat-alog` (parts library), `hiss` (blocked operation, with the reason in plain words).

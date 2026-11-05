@@ -16,13 +16,11 @@ from pathlib import Path
 
 import tomli_w
 
+from .errors import Hiss
+
 NEEDED = "needed"
 ASSUMED = "assumed"
 MEASURED = "measured"
-
-
-class ProfileError(Exception):
-    """A user-correctable problem with a machine name, field, or value."""
 
 
 @dataclass(frozen=True)
@@ -34,14 +32,14 @@ class Field:
     def parse(self, raw: str) -> float | str:
         if self.choices:
             if raw not in self.choices:
-                raise ProfileError(f"{self.key} must be one of: {', '.join(self.choices)}")
+                raise Hiss(f"{self.key} must be one of: {', '.join(self.choices)}")
             return raw
         try:
             value = float(raw)
         except ValueError:
-            raise ProfileError(f"{self.key} must be a number, got {raw!r}") from None
+            raise Hiss(f"{self.key} must be a number, got {raw!r}") from None
         if not 0 < value < float("inf"):
-            raise ProfileError(f"{self.key} must be greater than zero, got {raw}")
+            raise Hiss(f"{self.key} must be greater than zero, got {raw}")
         return value
 
 
@@ -80,7 +78,7 @@ def home() -> Path:
 
 def _path(name: str) -> Path:
     if not _NAME.fullmatch(name):
-        raise ProfileError(f"Machine names use lowercase letters, digits and hyphens, got {name!r}")
+        raise Hiss(f"Machine names use lowercase letters, digits and hyphens, got {name!r}")
     return home() / f"{name}.toml"
 
 
@@ -88,14 +86,14 @@ def fields_for(kind: str) -> tuple[Field, ...]:
     try:
         return KINDS[kind]
     except KeyError:
-        raise ProfileError(f"Unknown kind {kind!r}. Choose from: {', '.join(KINDS)}") from None
+        raise Hiss(f"Unknown kind {kind!r}. Choose from: {', '.join(KINDS)}") from None
 
 
 def adopt(name: str, kind: str) -> dict:
     path = _path(name)
     specs = fields_for(kind)
     if path.exists():
-        raise ProfileError(f"{name} already lives here: {path}")
+        raise Hiss(f"{name} already lives here: {path}")
     profile = {
         "kind": kind,
         "fields": {f.key: {"status": NEEDED, "ask": f.ask} for f in specs},
@@ -107,7 +105,7 @@ def adopt(name: str, kind: str) -> dict:
 def load(name: str) -> dict:
     path = _path(name)
     if not path.exists():
-        raise ProfileError(f"No machine named {name}. Adopt it first: calipurr adopt {name} --kind cnc")
+        raise Hiss(f"No machine named {name}. Adopt it first: calipurr adopt {name} --kind cnc")
     return tomllib.loads(path.read_text())
 
 
@@ -117,11 +115,11 @@ def litter() -> list[str]:
 
 def feed(name: str, key: str, raw: str, status: str, note: str | None = None) -> dict:
     if status not in (ASSUMED, MEASURED):
-        raise ProfileError(f"Status must be {ASSUMED} or {MEASURED}, got {status!r}")
+        raise Hiss(f"Status must be {ASSUMED} or {MEASURED}, got {status!r}")
     profile = load(name)
     specs = {f.key: f for f in fields_for(profile["kind"])}
     if key not in specs:
-        raise ProfileError(f"{key} isn't a {profile['kind']} field. Choose from: {', '.join(specs)}")
+        raise Hiss(f"{key} isn't a {profile['kind']} field. Choose from: {', '.join(specs)}")
     entry = {
         "value": specs[key].parse(raw),
         "status": status,

@@ -3,9 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import webbrowser
 
 from . import __version__, profiles
-from .profiles import ASSUMED, MEASURED, ProfileError
+from .errors import Hiss, NeedsConfirmation
+from .profiles import ASSUMED, MEASURED
+from .project import Project
 
 
 def _interview(name: str, kind: str) -> None:
@@ -16,7 +19,7 @@ def _interview(name: str, kind: str) -> None:
             while raw := input(f"{field.ask}{hint}: ").strip():
                 try:
                     field.parse(raw)
-                except ProfileError as err:
+                except Hiss as err:
                     print(err)
                     continue
                 answer = input("Did you measure or verify that? [Y/n]: ").strip().lower()
@@ -26,11 +29,26 @@ def _interview(name: str, kind: str) -> None:
         print()
 
 
+def _report_hungry(args: argparse.Namespace, content: str) -> int:
+    """Print what a machine still needs and return how many values that is."""
+    needed = profiles.hungry(profiles.load(args.name))
+    if args.json:
+        print(json.dumps({"machine": args.name, "needed": needed}))
+    elif needed:
+        print(f"{args.name} still needs:")
+        for key, ask in needed.items():
+            print(f"  {key}: {ask}")
+    else:
+        print(content)
+    return len(needed)
+
+
 def _adopt(args: argparse.Namespace) -> int:
     profiles.adopt(args.name, args.kind)
     if sys.stdin.isatty():
         _interview(args.name, args.kind)
-    return _report_hungry(args, f"Welcome home, {args.name}.")
+    _report_hungry(args, f"Welcome home, {args.name}.")
+    return 0
 
 
 def _litter(args: argparse.Namespace) -> int:
@@ -60,56 +78,257 @@ def _vet(args: argparse.Namespace) -> int:
 
 def _feed(args: argparse.Namespace) -> int:
     profiles.feed(args.name, args.key, args.value, ASSUMED if args.assumed else MEASURED, args.note)
-    return _report_hungry(args, "Nom.")
+    _report_hungry(args, "Nom.")
+    return 0
 
 
 def _hungry(args: argparse.Namespace) -> int:
     return 1 if _report_hungry(args, f"{args.name} is purring. Nothing needed.") else 0
 
 
-def _report_hungry(args: argparse.Namespace, content: str) -> int:
-    """Print what's still needed and return how many values that is."""
-    needed = profiles.hungry(profiles.load(args.name))
+def _meow(args: argparse.Namespace) -> int:
+    entry = Project(args.project).meow(args.key, args.name, args.ask, args.unit)
     if args.json:
-        print(json.dumps({"machine": args.name, "needed": needed}))
-    elif needed:
-        print(f"{args.name} still needs:")
-        for key, ask in needed.items():
-            print(f"  {key}: {ask}")
+        print(json.dumps({args.key: entry}))
     else:
-        print(content)
-    return len(needed)
+        print(f"Meow. Asked for {args.key}.")
+    return 0
+
+
+def _bowl(args: argparse.Namespace) -> int:
+    project = Project(args.project)
+    params = project.params()
+    if args.json:
+        print(json.dumps({"params": params, "needed": sorted(project.hungry())}))
+    elif not params:
+        print("Nothing asked yet. Ask for a value: calipurr meow KEY --name NAME --ask QUESTION")
+    else:
+        for key, entry in params.items():
+            value = f"{entry['value']:g} {entry.get('unit', 'mm')}" if "value" in entry else "-"
+            print(f"{key}: {value}  [{entry['status']}]  {entry.get('name', '')}")
+    return 1 if project.hungry() else 0
+
+
+def _treat(args: argparse.Namespace) -> int:
+    entry = Project(args.project).answer(args.key, args.value, ASSUMED if args.assumed else MEASURED, args.note)
+    print(json.dumps({args.key: entry}) if args.json else f"Nom. {args.key} is {entry['value']:g}, {entry['status']}.")
+    return 0
+
+
+def _dots(args: argparse.Namespace) -> int:
+    dots = Project(args.project).dots()
+    if args.json:
+        print(json.dumps({"dots": dots}))
+    elif not dots:
+        print("No laser dots yet.")
+    else:
+        for dot in dots:
+            where = ", ".join(f"{v:g}" for v in dot["position"])
+            print(f"Dot {dot['id']} on {dot['file']} at ({where}): {dot['text'] or '(no comment)'}")
+    return 0
+
+
+def _print_gauge(record: dict) -> None:
+    end = "mouth" if record["kind"] == "socket" else "tip"
+    print(f"{record['file']}: a {record['kind']} gauge. Step A is at the {end}.")
+    for step in record["steps"]:
+        print(f"  {step['letter']}  {step['size_mm']:g} mm")
+    print("After printing, report the step that fit: calipurr kitten report " f"{record['name']} --step LETTER --measured MM")
+
+
+def _gauge(args: argparse.Namespace) -> int:
+    from . import kitten
+
+    record = kitten.make_gauge(
+        Project(args.project),
+        args.start,
+        args.stop,
+        args.step,
+        kind=args.kind,
+        step_height=args.step_height,
+        labels=not args.no_labels,
+        target=args.target,
+        name=args.kitten_name,
+        force=args.force,
+    )
+    print(json.dumps(record)) if args.json else _print_gauge(record)
+    return 0
+
+
+def _cut(args: argparse.Namespace) -> int:
+    from . import kitten
+
+    record = kitten.make_cut(
+        Project(args.project), args.file, args.keep_above, args.keep_below, args.kitten_name, args.force
+    )
+    print(json.dumps(record) if args.json else f"Made {record['file']} from {record['source']}.")
+    return 0
+
+
+def _report(args: argparse.Namespace) -> int:
+    from . import kitten
+
+    record = kitten.report(
+        Project(args.project),
+        args.kitten_name,
+        args.step,
+        args.measured,
+        args.material,
+        args.machine,
+        args.note,
+        args.confirm,
+    )
+    if args.json:
+        print(json.dumps(record))
+    else:
+        result = record["report"]
+        print(f"Nom. Step {result['letter']}: modeled {result['modeled_mm']:g} mm, measured {result['measured_mm']:g} mm.")
+        if record["for"]:
+            print(f"{record['for']} is now {result['modeled_mm']:g} mm, measured.")
+    return 0
+
+
+def _kittens(args: argparse.Namespace) -> int:
+    from . import kitten
+
+    records = kitten.kittens(Project(args.project))
+    if args.json:
+        print(json.dumps({"kittens": records}))
+    elif not records:
+        print("No kittens yet.")
+    else:
+        for record in records:
+            result = record.get("report")
+            outcome = f", step {result['letter']} fit" if result else ""
+            print(f"{record['name']}  ({record['type']}{outcome})")
+    return 0
+
+
+def _purrflight(args: argparse.Namespace) -> int:
+    from . import purrflight
+
+    project = Project(args.project)
+    profile = profiles.load(args.machine) if args.machine else None
+    result = purrflight.run(project.resolve_file(args.file), args.machine, profile)
+    if args.json:
+        print(json.dumps(result))
+    else:
+        print(f"{result['file']}: {result['size_mm']} mm")
+        for check in result["checks"]:
+            print(f"  [{check['status']}] {check['label']}: {check['detail']}")
+    return 1 if result["overall"] == "fail" else 0
+
+
+def _serve(args: argparse.Namespace) -> int:
+    from .server import make_server
+
+    server = make_server(Project(args.project), args.port, args.build)
+    url = f"http://127.0.0.1:{server.server_address[1]}/"
+    print(f"Emily is watching {Project(args.project).root} at {url}", flush=True)
+    print("Press Ctrl-C to stop.", flush=True)
+    if not args.no_open:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print()
+    finally:
+        server.server_close()
+    return 0
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="calipurr", description="Keep your machines' real specs, measured and fed.")
+    parser = argparse.ArgumentParser(prog="calipurr", description="Measure twice, purr once.")
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    def command(name, alias, handler, help_text):
-        p = sub.add_parser(name, aliases=[alias], help=f"{help_text} (alias: {alias})")
+    def add(group, name, alias, handler, help_text, project=False):
+        aliases = [alias] if alias else []
+        suffix = f" (alias: {alias})" if alias else ""
+        p = group.add_parser(name, aliases=aliases, help=f"{help_text}{suffix}")
         p.add_argument("--json", action="store_true", help="machine-readable output")
+        if project:
+            p.add_argument("--project", default=".", help="project folder (default: current folder)")
         p.set_defaults(handler=handler)
         return p
 
-    p = command("adopt", "add", _adopt, "add a machine profile")
+    p = add(sub, "adopt", "add", _adopt, "add a machine profile")
     p.add_argument("name")
     p.add_argument("--kind", required=True, choices=sorted(profiles.KINDS))
 
-    command("litter", "list", _litter, "list your machines")
+    add(sub, "litter", "list", _litter, "list your machines")
 
-    p = command("vet", "show", _vet, "show a machine's values and where they came from")
+    p = add(sub, "vet", "show", _vet, "show a machine's values and where they came from")
     p.add_argument("name")
 
-    p = command("feed", "set", _feed, "record a value, treated as measured unless --assumed")
+    p = add(sub, "feed", "set", _feed, "record a machine value, treated as measured unless --assumed")
     p.add_argument("name")
     p.add_argument("key")
     p.add_argument("value")
     p.add_argument("--assumed", action="store_true", help="the value is a guess or a spec sheet number")
     p.add_argument("--note", help="how you got this value")
 
-    p = command("hungry", "missing", _hungry, "list values still needed; exits 1 if any are")
+    p = add(sub, "hungry", "missing", _hungry, "list machine values still needed; exits 1 if any are")
     p.add_argument("name")
+
+    p = add(sub, "meow", "ask", _meow, "ask the user for a part dimension", project=True)
+    p.add_argument("key")
+    p.add_argument("--name", required=True, help="what the dimension is")
+    p.add_argument("--ask", required=True, help="how to measure or decide it")
+    p.add_argument("--unit", default="mm")
+
+    add(sub, "bowl", "params", _bowl, "list part dimensions; exits 1 if any are still needed", project=True)
+
+    p = add(sub, "treat", "answer", _treat, "record a part dimension, treated as measured unless --assumed", project=True)
+    p.add_argument("key")
+    p.add_argument("value")
+    p.add_argument("--assumed", action="store_true", help="the value is a guess")
+    p.add_argument("--note", help="how you got this value")
+
+    add(sub, "dots", "comments", _dots, "read the user's laser dot comments", project=True)
+
+    kitten = sub.add_parser("kitten", aliases=["test-piece"], help="make and report small test pieces (alias: test-piece)")
+    kitten_sub = kitten.add_subparsers(dest="kitten_command", required=True)
+
+    p = add(kitten_sub, "gauge", None, _gauge, "make a lettered stepped gauge", project=True)
+    p.add_argument("--from", dest="start", type=float, required=True, help="smallest size in mm")
+    p.add_argument("--to", dest="stop", type=float, required=True, help="largest size in mm")
+    p.add_argument("--step", type=float, default=0.2, help="size change per step in mm (default: 0.2)")
+    p.add_argument("--kind", default="plug", choices=["plug", "socket"], help="plug goes inside something, socket goes around it")
+    p.add_argument("--step-height", type=float, default=6.0, help="height of each step in mm (default: 6)")
+    p.add_argument("--no-labels", action="store_true", help="leave off the letters, for steps too small to label")
+    p.add_argument("--for", dest="target", help="the part dimension this gauge will settle")
+    p.add_argument("--name", dest="kitten_name")
+    p.add_argument("--force", action="store_true", help="replace a kitten with the same name")
+
+    p = add(kitten_sub, "cut", None, _cut, "slice a feature out of a model, keeping its geometry", project=True)
+    p.add_argument("file")
+    p.add_argument("--keep-above", type=float, help="keep what's above this Z height in mm")
+    p.add_argument("--keep-below", type=float, help="keep what's below this Z height in mm")
+    p.add_argument("--name", dest="kitten_name")
+    p.add_argument("--force", action="store_true", help="replace a kitten with the same name")
+
+    p = add(kitten_sub, "report", None, _report, "record which gauge step fit", project=True)
+    p.add_argument("kitten_name", metavar="name")
+    p.add_argument("--step", required=True, help="the letter of the step that fit")
+    p.add_argument("--measured", type=float, required=True, help="what that step measures with calipers, in mm")
+    p.add_argument("--material")
+    p.add_argument("--machine")
+    p.add_argument("--note")
+    p.add_argument("--confirm", action="store_true", help="save even if the measurement doesn't match the step")
+
+    add(kitten_sub, "list", None, _kittens, "list test pieces and their results", project=True)
+
+    p = add(sub, "purrflight", "check", _purrflight, "check a model before making it; exits 1 on a failure", project=True)
+    p.add_argument("file")
+    p.add_argument("--machine", help="also check it fits this machine")
+
+    p = sub.add_parser("serve", aliases=["gui"], help="open the visual interface (alias: gui)")
+    p.add_argument("--project", default=".", help="project folder (default: current folder)")
+    p.add_argument("--port", type=int, default=0, help="port on this computer (default: any free port)")
+    p.add_argument("--build", help="command to rebuild the model after a value changes, run in the project folder")
+    p.add_argument("--no-open", action="store_true", help="don't open a browser")
+    p.set_defaults(handler=_serve)
 
     return parser
 
@@ -117,8 +336,10 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        status = args.handler(args)
-    except ProfileError as err:
+        return args.handler(args)
+    except NeedsConfirmation as err:
+        print(f"calipurr: {err} Pass --confirm if it's right.", file=sys.stderr)
+        return 2
+    except Hiss as err:
         print(f"calipurr: {err}", file=sys.stderr)
         return 2
-    return status if args.handler is _hungry else 0
