@@ -286,8 +286,8 @@ def test_carousel_walks_through_questions_until_the_agents_turn(app):
     page.fill("#question textarea", "It is stripped")
     page.click("#question .primary")
     wait_for_question(page, "Bore")
-    page.fill("#question input[type=number]", "12.5")
-    page.select_option("#question select", "assumed")
+    page.fill("#question input[inputmode=decimal]", "12.5")
+    page.select_option('#question select[aria-label="How you know this"]', "assumed")
     page.click("#question .primary")
 
     # Saving skips ahead to what's still open, and optional questions don't hold anything up.
@@ -299,12 +299,12 @@ def test_carousel_walks_through_questions_until_the_agents_turn(app):
     # A chip reopens an answer to change or clear it.
     page.click(".chip:has-text('Bore')")
     wait_for_question(page, "Bore")
-    assert page.input_value("#question input[type=number]") == "12.5"
-    assert page.input_value("#question select") == "assumed"
+    assert page.input_value("#question input[inputmode=decimal]") == "12.5"
+    assert page.input_value('#question select[aria-label="How you know this"]') == "assumed"
     page.click("button:has-text('Clear answer')")
     page.wait_for_function("document.querySelector('#next h2').textContent.includes('1 question left')")
     assert project.params()["bore"]["status"] == "needed"
-    page.fill("#question input[type=number]", "13")
+    page.fill("#question input[inputmode=decimal]", "13")
     page.click("#question .primary")
     page.wait_for_function("document.querySelector('#next h2').textContent.includes('Tell your agent')")
 
@@ -376,7 +376,7 @@ def test_only_the_current_questions_dimension_is_drawn_on_its_picture(app):
     assert page.locator(".mark").count() == 1
 
     # Moving on swaps the dimension on the same picture, and brings up the next picture when it differs.
-    page.fill("#question input[type=number]", "30")
+    page.fill("#question input[inputmode=decimal]", "30")
     page.click("#question .primary")
     page.wait_for_selector('.mark[data-key="across"]')
     assert page.locator(".mark").count() == 1
@@ -409,3 +409,36 @@ def test_picture_and_question_stay_in_view_with_many_questions(app):
     save = page.locator("#question .answer .primary").bounding_box()
     assert stage["height"] >= 260
     assert save["y"] + save["height"] <= 1000 and last_chip["y"] + last_chip["height"] <= 1000
+
+
+def test_a_dropped_photo_attaches_to_the_current_question(app):
+    page, project = app
+    project.meow("back", "Board back", "What does the back look like?", kind="text")
+    wait_for_question(page, "Board back")
+    page.evaluate(
+        """async (bytes) => {
+            const data = new DataTransfer();
+            data.items.add(new File([new Uint8Array(bytes)], 'my back side.png', { type: 'image/png' }));
+            window.dispatchEvent(new DragEvent('drop', { dataTransfer: data, cancelable: true }));
+        }""",
+        list(blank_png(4, 4)),
+    )
+    page.wait_for_selector(".photos button img")
+    assert project.params()["back"]["photos"] == ["photos/my back side.png"]
+    # The picture comes up so the user can point a laser dot at it.
+    page.wait_for_function("document.getElementById('photoimg').naturalWidth > 0")
+
+
+def test_inches_with_fractions_are_saved_as_millimeters(app):
+    page, project = app
+    project.meow("length", "Length", "How long is it?")
+    project.meow("width", "Width", "How wide is it?")
+    wait_for_question(page, "Length")
+    page.select_option('#question select[aria-label="Unit"]', "in")
+    page.fill("#q-length", "16 1/8")
+    page.click("#question .primary")
+    wait_for_question(page, "Width")
+    assert project.params()["length"]["value"] == pytest.approx(409.575)
+    assert project.params()["length"]["note"] == "Entered as 16 1/8 in."
+    # The next question starts in the unit the user just chose.
+    assert page.input_value('#question select[aria-label="Unit"]') == "in"

@@ -36,6 +36,25 @@ async function post(route, body) {
   return data.result;
 }
 
+async function sendPhotos(files) {
+  const key = ui.currentQuestion;
+  const asked = key && (ui.state.params[key].name || key);
+  for (const file of files) {
+    const query = new URLSearchParams({ name: file.name });
+    if (key) query.set('key', key);
+    try {
+      const response = await fetch(`/api/photo?${query}`, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      toast(asked ? `Photo added to ${asked}.` : 'Photo added.', true);
+      await refresh(true);
+      selectFile(data.result.file);
+    } catch (error) {
+      toast(`${file.name}: ${error.message}`);
+    }
+  }
+}
+
 function toast(message, good = false) {
   const node = $('toast');
   node.textContent = message;
@@ -541,6 +560,23 @@ function renderFiles() {
   updateBand();
 }
 
+const hasFiles = (event) => event.dataTransfer?.types.includes('Files');
+window.addEventListener('dragover', (event) => {
+  if (!hasFiles(event)) return;
+  // Without this the browser opens the dropped file in place of the page.
+  event.preventDefault();
+  document.body.classList.add('dropping');
+});
+window.addEventListener('dragleave', (event) => {
+  if (!event.relatedTarget) document.body.classList.remove('dropping');
+});
+window.addEventListener('drop', (event) => {
+  document.body.classList.remove('dropping');
+  if (!hasFiles(event)) return;
+  event.preventDefault();
+  sendPhotos([...event.dataTransfer.files]);
+});
+
 function renderBowl() {
   const params = Object.entries(ui.state.params);
   const required = params.filter(([, e]) => e.required !== false);
@@ -575,6 +611,15 @@ function answerInput(key, entry, id) {
 function answerValue(node) {
   const picked = node.querySelector?.('input:checked');
   return picked ? picked.value : node.value ?? '';
+}
+
+function photoList(entry) {
+  const known = new Map(ui.state.files.photos.map((f) => [f.name, f]));
+  const thumbs = (entry.photos || []).filter((name) => known.has(name)).map((name) => h('button', { type: 'button', 'aria-label': `Show ${name}`, title: name, onclick: () => selectFile(name) },
+    h('img', { src: fileUrl(known.get(name)), alt: '' })));
+  const input = h('input', { type: 'file', accept: 'image/*', multiple: '', 'aria-label': 'Add a photo to this question' });
+  input.addEventListener('change', () => sendPhotos([...input.files]));
+  return h('div', { class: 'photos' }, ...thumbs, h('label', { class: 'addphoto' }, input, 'Add a photo (or drop one anywhere)'));
 }
 
 function badge(entry) {
@@ -623,8 +668,16 @@ function questionNode(key, entry, position, total) {
   const step = (by) => goToQuestion(keys[(position - 1 + by + total) % total]);
   let control = answerInput(key, entry, id);
   let status = null;
+  let unitPick = null;
   if (!control) {
-    control = h('input', { id, type: 'number', min: '0', step: 'any', 'aria-label': `${entry.name || key} in ${entry.unit || 'mm'}`, value: entry.value ?? '' });
+    const unit = entry.unit || 'mm';
+    control = h('input', { id, type: 'text', inputmode: 'decimal', autocomplete: 'off', 'aria-label': entry.name || key, value: entry.value ?? '' });
+    if (unit === 'mm' || unit === 'in') {
+      unitPick = h('select', { 'aria-label': 'Unit' }, h('option', { value: 'mm' }, 'mm'), h('option', { value: 'in' }, 'in'));
+      // A saved value is stored in the question's unit, so show it in that unit.
+      unitPick.value = entry.value === undefined ? ui.lengthUnit || unit : unit;
+      unitPick.addEventListener('change', () => { ui.lengthUnit = unitPick.value; });
+    }
     status = h('select', { 'aria-label': 'How you know this' }, h('option', { value: 'measured' }, 'Measured'), h('option', { value: 'assumed' }, 'Just a guess'));
     if (entry.status === 'assumed') status.value = 'assumed';
   }
@@ -633,7 +686,8 @@ function questionNode(key, entry, position, total) {
     control.addEventListener('input', () => ui.answerDrafts.set(key, control.value));
   }
   const save = async () => {
-    const value = answerValue(control);
+    const typed = answerValue(control);
+    const value = unitPick && unitPick.value !== entry.unit && typed ? `${typed} ${unitPick.value}` : typed;
     if (!value) {
       toast(entry.status === 'needed' ? 'Enter an answer, or use the arrows to come back to this later.' : 'Enter an answer, or use Clear answer.');
       return;
@@ -667,12 +721,13 @@ function questionNode(key, entry, position, total) {
     entry.note ? h('p', { class: 'why' }, entry.note) : null,
     h('div', { class: 'answer' },
       control,
-      status ? h('span', {}, entry.unit || 'mm') : null,
+      unitPick ?? (status ? h('span', {}, entry.unit || 'mm') : null),
       status,
       h('button', { type: 'button', class: 'primary', onclick: save }, nextUnanswered(key) ? 'Save and next' : 'Save'),
       seePicture,
       clear),
-    status ? gaugeForm(key, entry) : null);
+    status ? gaugeForm(key, entry) : null,
+    photoList(entry));
 }
 
 function chipNode(key, entry) {

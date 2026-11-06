@@ -34,6 +34,7 @@ CONTENT_TYPES = {
 }
 BUILD_TIMEOUT_S = 300
 MAX_BODY_BYTES = 1_000_000
+MAX_PHOTO_BYTES = 50_000_000
 
 
 class Rebuilder:
@@ -234,12 +235,28 @@ def _handler(app: App, port_holder: dict) -> type[BaseHTTPRequestHandler]:
                 raise Hiss("Not found")
             self._send(HTTPStatus.OK, target.read_bytes(), CONTENT_TYPES[suffix])
 
+        def _photo(self, query: dict) -> None:
+            length = int(self.headers.get("Content-Length") or 0)
+            if length > MAX_PHOTO_BYTES:
+                self.close_connection = True
+                self._json({"error": "That photo is over 50 MB. Export a smaller copy."}, HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+                return
+            try:
+                name = app.project.add_photo(query.get("name", ["photo"])[0], self.rfile.read(length), query.get("key", [None])[0])
+                self._json({"result": {"file": name}})
+            except Hiss as err:
+                self._json({"error": str(err)}, HTTPStatus.BAD_REQUEST)
+
         def do_POST(self):  # noqa: N802
             if not self._host_ok():
                 return
             origin = self.headers.get("Origin")
             if origin is None or origin.removeprefix("http://") not in self._allowed_hosts():
                 self._json({"error": "Changes must come from Calipurr's own page."}, HTTPStatus.FORBIDDEN)
+                return
+            url = urlparse(self.path)
+            if url.path == "/api/photo":
+                self._photo(parse_qs(url.query))
                 return
             if self.headers.get_content_type() != "application/json":
                 self._json({"error": "Send JSON."}, HTTPStatus.UNSUPPORTED_MEDIA_TYPE)

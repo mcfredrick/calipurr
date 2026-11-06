@@ -12,7 +12,7 @@ import trimesh
 
 from calipurr import profiles
 from calipurr.errors import Hiss
-from calipurr.project import MAX_LIVES, Project
+from calipurr.project import MAX_LIVES, Project, length_value
 from calipurr.server import make_server
 
 
@@ -377,3 +377,71 @@ def test_plugin_manifests_match_the_package_version(manifest):
 
     root = Path(__file__).parent.parent
     assert json.loads((root / manifest).read_text())["version"] == __version__
+
+
+@pytest.mark.parametrize(
+    "raw, unit, expected, entered",
+    [
+        ("406", "mm", 406.0, None),
+        ("406 mm", "mm", 406.0, None),
+        ("16 in", "mm", 406.4, "16 in"),
+        ('16"', "mm", 406.4, "16 in"),
+        ("16 1/2 inches", "mm", 419.1, "16 1/2 in"),
+        ("16-1/2in", "mm", 419.1, "16-1/2 in"),
+        ("5/8 in", "mm", 15.875, "5/8 in"),
+        ("25.4 mm", "in", 1.0, "25.4 mm"),
+        ("5/8 in", "in", 0.625, None),
+    ],
+)
+def test_lengths_convert_to_the_questions_unit(raw, unit, expected, entered):
+    assert length_value("D1", raw, unit) == (pytest.approx(expected), entered)
+
+
+@pytest.mark.parametrize("raw, unit", [("1/0 in", "mm"), ("5/8", "mm"), ("in", "mm"), ("-2 in", "mm"), ("2 in", "rpm")])
+def test_unclear_lengths_are_refused(raw, unit):
+    with pytest.raises(Hiss):
+        length_value("D1", raw, unit)
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 16
+
+
+def test_photos_stay_with_their_question_through_answers_and_rewording(project):
+    project.meow("back", "Back", "What does it look like?", kind="text")
+    name = project.add_photo("../../evil.txt", PNG, "back")
+    assert name == "photos/evil.png" and (project.root / name).read_bytes() == PNG
+    assert project.add_photo("evil.png", PNG, "back") == "photos/evil-2.png"
+    project.answer("back", "Grooved")
+    project.meow("back", "Back", "Reworded", kind="text")
+    project.forget("back")
+    assert project.params()["back"]["photos"] == [name, "photos/evil-2.png"]
+    project.discard(name)
+    assert project.params()["back"]["photos"] == ["photos/evil-2.png"]
+
+
+@pytest.mark.parametrize("data", [b"<svg></svg>", b"\0\0\0 ftypheic"])
+def test_files_that_are_not_viewable_photos_are_refused(project, data):
+    with pytest.raises(Hiss):
+        project.add_photo("x.png", data)
+    assert project.files()["photos"] == []
+
+
+def test_photo_upload_needs_calipurrs_own_page(project):
+    server = make_server(project)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    host = f"127.0.0.1:{server.server_address[1]}"
+
+    def upload(origin):
+        request = urllib.request.Request(f"http://{host}/api/photo?name=a.png", data=PNG, headers={"Origin": origin, "Content-Type": "image/png"})
+        try:
+            return urllib.request.urlopen(request).status
+        except urllib.error.HTTPError as err:
+            return err.code
+
+    try:
+        assert upload("https://evil.example") == 403
+        assert upload(f"http://{host}") == 200
+        assert (project.root / "photos" / "a.png").exists()
+    finally:
+        server.shutdown()
+        server.server_close()

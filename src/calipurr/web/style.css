@@ -28,8 +28,15 @@ header small{color:#c9c5ba}
 #question .ask{margin:4px 0 2px}
 #question .why{margin:0 0 2px;font-size:13px;color:var(--muted)}
 .answer{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:6px 0}
-.answer input[type=number],.answer textarea,.answer select{font:inherit;padding:6px 8px;border:1px solid #b9b19c;border-radius:8px;background:#fff}
-.answer input[type=number]{width:120px}
+.answer input[inputmode=decimal],.answer textarea,.answer select{font:inherit;padding:6px 8px;border:1px solid #b9b19c;border-radius:8px;background:#fff}
+.answer input[inputmode=decimal]{width:120px}
+.photos{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}
+.photos button{padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer;line-height:0}
+.photos img{width:56px;height:56px;object-fit:cover;border-radius:5px}
+.addphoto{color:#8f211c;text-decoration:underline;font-size:12px;cursor:pointer}
+.addphoto:has(input:focus-visible){outline:2px solid var(--red)}
+.addphoto input{position:absolute;opacity:0;width:1px;height:1px}
+body.dropping #stage,body.dropping #carousel{outline:3px dashed var(--red);outline-offset:-3px}
 .answer textarea{width:min(520px,100%);min-height:40px}
 .answer .primary{font-size:14px;padding:7px 14px}
 .choices{display:flex;flex-wrap:wrap;gap:6px}

@@ -1,6 +1,7 @@
 """A project is a plain folder any agent can read and write.
 
 params.toml         questions for the user: needed, then assumed, measured or answered
+photos/             pictures, including ones the user dropped on a question
 annotations.json    laser dots: comments pinned to a model or photo
 next.txt            what the agent says the user should do next
 .calipurr/          lurk, bell and handed: how the GUI hands the turn back to a waiting agent
@@ -11,9 +12,11 @@ litter/             discarded files, kept until the user cleans them out
 
 from __future__ import annotations
 
+import itertools
 import json
 import math
 import os
+import re
 import shutil
 import time
 import tomllib
@@ -33,7 +36,11 @@ LURK_STALE_S = 5
 LURK_POLL_S = 0.5
 NUMBER, TEXT, CHOICE = "number", "text", "choice"
 ANSWERED = "answered"
-QUESTION_FIELDS = ("name", "ask", "unit", "kind", "choices", "why", "required", "show", "at")
+# photos is the user's own: what they attached to a question, kept when the question changes.
+QUESTION_FIELDS = ("name", "ask", "unit", "kind", "choices", "why", "required", "show", "at", "photos")
+MM_PER_INCH = 25.4
+LENGTH_UNITS = {"mm": "mm", "millimeter": "mm", "millimeters": "mm", "in": "in", "inch": "in", "inches": "in", '"': "in", "\u201d": "in"}
+PHOTO_SIGNATURES = ((b"\xff\xd8\xff", ".jpg"), (b"\x89PNG\r\n\x1a\n", ".png"), (b"GIF8", ".gif"))
 
 
 def positive_number(key: str, raw: object) -> float:
@@ -44,6 +51,40 @@ def positive_number(key: str, raw: object) -> float:
     if not 0 < value < math.inf:
         raise Hiss(f"{key} must be greater than zero, got {raw}")
     return value
+
+
+def _photo_suffix(data: bytes) -> str:
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    for signature, suffix in PHOTO_SIGNATURES:
+        if data.startswith(signature):
+            return suffix
+    raise Hiss("Photos must be JPG, PNG, WebP or GIF. Export a HEIC photo as JPG first.")
+
+
+def _amount(key: str, text: str) -> float:
+    """A decimal, a fraction, or a whole number and a fraction: 16.5, 5/8, 16 1/8, 16-1/8."""
+    mixed = re.fullmatch(r"(?:(\d+)[\s-]+)?(\d+)/(\d+)", text)
+    if not mixed:
+        return positive_number(key, text)
+    whole, top, bottom = mixed.groups()
+    if int(bottom) == 0:
+        raise Hiss(f"{key} has a fraction over zero: {text}")
+    return positive_number(key, int(whole or 0) + int(top) / int(bottom))
+
+
+def length_value(key: str, raw: object, unit: str) -> tuple[float, str | None]:
+    """A number in the question's unit, and what was typed if it came in the other unit."""
+    written = re.fullmatch(r"(.*?)\s*(millimeters?|mm|inch(?:es)?|in|\"|\u201d)", str(raw).strip().lower())
+    if not written:
+        return positive_number(key, raw), None
+    amount, given = _amount(key, written[1]), LENGTH_UNITS[written[2]]
+    if unit not in ("mm", "in"):
+        raise Hiss(f"{key} is measured in {unit}, got {raw}")
+    if given == unit:
+        return amount, None
+    converted = amount * MM_PER_INCH if unit == "mm" else amount / MM_PER_INCH
+    return round(converted, 4), f"{written[1]} {given}"
 
 
 def _write_atomic(path: Path, text: str) -> None:
@@ -112,13 +153,14 @@ class Project:
                 self._check_position(show, point)
         params = self.params()
         entry = params.get(key, {"status": NEEDED})
+        photos = entry.get("photos")
         stale = entry.get("kind", NUMBER) != kind or (choices and entry.get("value") not in choices)
         if stale:
             entry = {"status": NEEDED}
         for field in QUESTION_FIELDS:
             entry.pop(field, None)
         entry.update(name=name, ask=ask, unit=unit, kind=kind, required=required)
-        entry.update({k: v for k, v in (("choices", choices), ("why", why), ("show", show), ("at", at)) if v})
+        entry.update({k: v for k, v in (("choices", choices), ("why", why), ("show", show), ("at", at), ("photos", photos)) if v})
         params[key] = entry
         self._save_params(params)
         return entry
@@ -132,7 +174,10 @@ class Project:
         if kind == NUMBER:
             if status not in (ASSUMED, MEASURED):
                 raise Hiss(f"Status must be {ASSUMED} or {MEASURED}, got {status!r}")
-            value: float | str = positive_number(key, raw)
+            value: float | str
+            value, entered = length_value(key, raw, question.get("unit", "mm"))
+            if entered:
+                note = f"Entered as {entered}. {note}" if note else f"Entered as {entered}."
         else:
             value, status = str(raw).strip(), ANSWERED
             if not value:
@@ -146,6 +191,30 @@ class Project:
         params[key] = entry
         self._save_params(params)
         return entry
+
+    def add_photo(self, filename: str, data: bytes, key: str | None = None) -> str:
+        """Save a picture from the user into photos/, attached to a question if one is named."""
+        params = self.params()
+        if key is not None and key not in params:
+            raise Hiss(f"No question named {key}")
+        suffix = _photo_suffix(data)
+        # Browsers send the name as given, so it can't be trusted as a path.
+        stem = re.sub(r"[^\w. -]+", "-", Path(filename.replace("\\", "/")).stem).strip(". -") or "photo"
+        folder = self.root / "photos"
+        folder.mkdir(exist_ok=True)
+        for n in itertools.count(1):
+            target = folder / f"{stem}{suffix if n == 1 else f'-{n}{suffix}'}"
+            try:
+                with target.open("xb") as out:
+                    out.write(data)
+                break
+            except FileExistsError:
+                continue
+        name = target.relative_to(self.root).as_posix()
+        if key is not None:
+            params[key]["photos"] = [*params[key].get("photos", []), name]
+            self._save_params(params)
+        return name
 
     def forget(self, key: str) -> dict:
         """Put a value back to needed, keeping its question."""
@@ -341,6 +410,14 @@ class Project:
         if target.exists():
             raise Hiss(f"The litter box already has a {path.name}. Clean it out or rename one first.")
         path.replace(target)
+        params = self.params()
+        attached = [e for e in params.values() if name in e.get("photos", [])]
+        for entry in attached:
+            entry["photos"] = [p for p in entry["photos"] if p != name]
+            if not entry["photos"]:
+                del entry["photos"]
+        if attached:
+            self._save_params(params)
         return target.relative_to(self.root).as_posix()
 
     def rescue(self, name: str) -> str:
