@@ -1,12 +1,16 @@
 [project]
 name = "calipurr"
-version = "0.0.1"
+version = "0.1.0"
 description = "A measuring-obsessed cat that helps you and your AI agent agree on real-world geometry."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 dependencies = ["tomli-w>=1.0", "numpy>=1.26", "trimesh>=4.4", "manifold3d>=2.5", "scipy>=1.11"]
+
+[project.urls]
+Homepage = "https://github.com/mcfredrick/calipurr"
+Issues = "https://github.com/mcfredrick/calipurr/issues"
 
 [project.scripts]
 calipurr = "calipurr.cli:main"

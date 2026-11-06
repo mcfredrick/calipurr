@@ -6,14 +6,20 @@ Measure twice, purr once.
 
 Calipurr helps you and your AI agent agree on real-world geometry for 3D printing, CNC routing and laser cutting. It remembers what your machines can actually do, and it records whether each number was measured or just assumed. It works with any agent that has shell access, and with no agent at all.
 
-**Status:** early and unpublished. Everything below works, but it has only been tried on a few parts so far.
+**Status:** early. Everything below works, but it has only been tried on a few parts, on macOS. See [known limits](#known-limits).
 
 ## Try it
 
-From a clone of this repo, in a folder with an STL or a photo:
+Install it with [uv](https://docs.astral.sh/uv/) (Python 3.11 or newer):
 
 ```
-uv run --project /path/to/calipurr calipurr serve
+uv tool install git+https://github.com/mcfredrick/calipurr
+```
+
+Then, in a folder with an STL or a photo:
+
+```
+calipurr serve
 ```
 
 That opens Emily's visual interface in your browser. It only listens on your own computer.
@@ -95,7 +101,15 @@ Add `--json` to most commands for agent-friendly output.
 
 ## Use it with your agent
 
-`skills/calipurr/` is an [Agent Skill](https://agentskills.io). Copy it to wherever your agent keeps skills. If your agent doesn't support skills, point it at `skills/calipurr/SKILL.md`.
+[`skills/calipurr/`](skills/calipurr) is an [Agent Skill](https://agentskills.io). The install above doesn't include it, so clone this repo and copy that folder to wherever your agent keeps skills. If your agent doesn't support skills, point it at `skills/calipurr/SKILL.md`.
+
+## Known limits
+
+- There's no laser or 2D output yet. Calipurr can record a laser's specs, but it can't check or prepare a cut.
+- CNC checks only cover size. They don't look at toolpaths, tool reach or feeds.
+- Overhang warnings use rough thresholds, so confirm them in your slicer.
+- Laser dots show through models, so a dot on the far side still appears.
+- Calipurr hasn't been tried on Windows or Linux.
 
 ## Safety
 
