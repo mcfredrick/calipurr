@@ -1,6 +1,6 @@
 [project]
 name = "calipurr"
-version = "0.1.0"
+version = "0.1.1"
 description = "A measuring-obsessed cat that helps you and your AI agent agree on real-world geometry."
 readme = "README.md"
 requires-python = ">=3.11"

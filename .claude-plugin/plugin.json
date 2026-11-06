@@ -1,6 +1,6 @@
 {
   "name": "calipurr",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A measuring-obsessed cat that helps you and your AI agent agree on real-world geometry for 3D printing, CNC routing and laser cutting.",
   "author": {
     "name": "Matt Fredrick",
