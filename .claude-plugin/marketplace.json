@@ -1,0 +1,15 @@
+{
+  "name": "calipurr",
+  "description": "A measuring-obsessed cat that helps you and your AI agent agree on real-world geometry for 3D printing, CNC routing and laser cutting.",
+  "owner": {
+    "name": "Matt Fredrick",
+    "url": "https://github.com/mcfredrick"
+  },
+  "plugins": [
+    {
+      "name": "calipurr",
+      "source": "./",
+      "description": "A measuring-obsessed cat that helps you and your AI agent agree on real-world geometry for 3D printing, CNC routing and laser cutting."
+    }
+  ]
+}

@@ -1,11 +1,17 @@
 ---
 name: calipurr
-description: Look up and record the real specs of a user's 3D printers, CNC routers and laser cutters with the calipurr CLI. Use before designing a part, generating G-code or toolpaths, or preparing laser files, and whenever the user mentions a machine's limits, a part that must fit something real, a failed print, a test-cut or test-print result, or a measurement of a real object.
+description: Look up and record the real specs of a user's 3D printers, CNC routers and laser cutters with the calipurr CLI. Use before designing a part, generating G-code or toolpaths, or preparing laser files, and whenever the user mentions a machine's limits, a part that must fit something real, a failed print, a test-cut or test-print result, or a measurement of a real object. Also use it to ask the user for measurements and decisions in a browser GUI, and to design small test pieces that prove a fit.
 license: GPL-3.0-or-later
 compatibility: Requires the calipurr command (Python 3.11+) and shell access.
 ---
 
 # Calipurr
+
+## Setup
+
+Run `calipurr --version`. If the command is missing, this skill was installed without it, because skill and plugin installers can't install it. Ask the user, then run `uv tool install git+https://github.com/mcfredrick/calipurr`. If `uv` is missing too, send them to https://docs.astral.sh/uv/.
+
+## Machines
 
 The user's machine profiles are the source of truth for machine limits. Every value is marked `needed`, `assumed` or `measured`.
 

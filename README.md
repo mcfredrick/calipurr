@@ -101,7 +101,18 @@ Add `--json` to most commands for agent-friendly output.
 
 ## Use it with your agent
 
-[`skills/calipurr/`](skills/calipurr) is an [Agent Skill](https://agentskills.io). The install above doesn't include it, so clone this repo and copy that folder to wherever your agent keeps skills. If your agent doesn't support skills, point it at `skills/calipurr/SKILL.md`.
+Calipurr has two parts: the `calipurr` command from [Try it](#try-it), and an [Agent Skill](https://agentskills.io) that teaches your agent to use it. Installing the skill or plugin doesn't install the command. If it's missing, the skill tells your agent to offer to install it.
+
+| Agent | Install the skill |
+|---|---|
+| Claude Code | `/plugin install calipurr --marketplace mcfredrick/calipurr` |
+| Gemini CLI | `gemini extensions install https://github.com/mcfredrick/calipurr` |
+| Codex | `codex plugin marketplace add mcfredrick/calipurr`, then `codex plugin add calipurr@calipurr` |
+| Others, such as Cursor and OpenCode | `npx skills add mcfredrick/calipurr` |
+
+If your agent doesn't support skills, point it at [`skills/calipurr/SKILL.md`](skills/calipurr/SKILL.md).
+
+Start a new session after installing, then describe your part and mention Calipurr.
 
 ## Known limits
 

@@ -5,6 +5,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import pytest
 import trimesh
@@ -368,3 +369,11 @@ def test_marks_survive_answers_and_need_a_picture(project, capsys):
     assert main(["meow", "q", *args, "--at", "0.1,0.2", "--at", "0.3,0.4"]) == 0
     assert project.answer("q", 5)["at"] == [[0.1, 0.2], [0.3, 0.4]]
     assert project.forget("q")["at"] == [[0.1, 0.2], [0.3, 0.4]]
+
+
+@pytest.mark.parametrize("manifest", [".claude-plugin/plugin.json", ".codex-plugin/plugin.json", "gemini-extension.json"])
+def test_plugin_manifests_match_the_package_version(manifest):
+    from calipurr import __version__
+
+    root = Path(__file__).parent.parent
+    assert json.loads((root / manifest).read_text())["version"] == __version__

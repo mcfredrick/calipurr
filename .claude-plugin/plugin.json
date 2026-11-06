@@ -1,0 +1,19 @@
+{
+  "name": "calipurr",
+  "version": "0.1.0",
+  "description": "A measuring-obsessed cat that helps you and your AI agent agree on real-world geometry for 3D printing, CNC routing and laser cutting.",
+  "author": {
+    "name": "Matt Fredrick",
+    "url": "https://github.com/mcfredrick"
+  },
+  "homepage": "https://github.com/mcfredrick/calipurr",
+  "repository": "https://github.com/mcfredrick/calipurr",
+  "license": "GPL-3.0-or-later",
+  "keywords": [
+    "3d-printing",
+    "cnc",
+    "laser-cutting",
+    "geometry",
+    "test-fit"
+  ]
+}
