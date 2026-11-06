@@ -61,7 +61,7 @@ Before designing a part that mates with a real object, or when a print or fit te
 Before sending the user to the machine for anything with more than a few steps, write a walkthrough and show it in the GUI. Read [the walkthrough playbook](references/walkthrough.md) first.
 
 - Build one: `calipurr catwalk walkthroughs/NAME.body.html --title "..." --kicker "..."`. It writes `walkthroughs/NAME.html`, which appears in the GUI under Catwalk. Rebuild after any change that affects the instructions.
-- Point the user to it with `calipurr nudge`.
+- Point the user to it with `calipurr nudge`. The banner shows an Open walkthrough button, so you don't need to say where it is. Without an STL in the project, a walkthrough also moves the cat tree to Make, so only build one when the job is ready.
 
 ## Recording values
 

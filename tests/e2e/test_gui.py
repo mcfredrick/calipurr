@@ -484,3 +484,53 @@ def test_a_walkthrough_opens_in_the_gui_with_scripts_blocked_and_returns_to_the_
     assert page.get_attribute("#walkframe", "src") == source
     page.click("#walkclose")
     assert page.locator("#walkpanel").is_hidden() and page.locator("#view").is_visible()
+
+
+def build_walkthrough(project):
+    folder = project.root / "walkthroughs"
+    folder.mkdir()
+    (folder / "job.body.html").write_text('<section class="part"><h2>Part</h2><article class="step"><h3>Step</h3></article></section>')
+    catwalk.build(project, "walkthroughs/job.body.html", "My job")
+
+
+def test_banner_opens_a_walkthrough_and_a_job_with_no_stl_reaches_make(app):
+    page, project = app
+    (project.root / "block.stl").unlink()
+    page.wait_for_function("document.querySelector('.perch.on')?.dataset.i === '1'")
+    build_walkthrough(project)
+    page.wait_for_function("document.querySelector('.perch.on')?.dataset.i === '3'")
+    assert "Follow the walkthrough" in page.inner_text("#stagenote")
+    page.click('#next button:has-text("Open walkthrough")')
+    assert page.frame_locator("#walkframe").locator(".step h3").inner_text() == "Step"
+    assert page.locator('#next button:has-text("Open walkthrough")').count() == 0
+    page.click("#walkclose")
+    page.wait_for_selector('#next button:has-text("Open walkthrough")')
+
+
+def test_an_unanswered_question_still_holds_a_walkthrough_job_at_measure(app):
+    page, project = app
+    (project.root / "block.stl").unlink()
+    build_walkthrough(project)
+    project.meow("bore", "Bore", "Measure it")
+    page.wait_for_function("document.querySelector('.perch.on')?.dataset.i === '0'")
+
+
+def test_page_reloads_for_newer_code_but_waits_for_unsaved_typing(app):
+    page, project = app
+    project.meow("bore", "Bore", "Measure it")
+    wait_for_question(page, "Bore")
+    page.fill("#q-bore", "7")
+    page.evaluate("document.activeElement.blur(); window.__stale = true")
+
+    def newer(route):
+        state = route.fetch().json()
+        state["ui_build"] = "newer"
+        route.fulfill(json=state)
+
+    page.route("**/api/state", newer)
+    page.wait_for_timeout(2500)
+    assert page.evaluate("window.__stale") is True
+    with page.expect_navigation():
+        page.fill("#q-bore", "")
+        page.evaluate("document.activeElement.blur()")
+    assert page.evaluate("window.__stale") is None

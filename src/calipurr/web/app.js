@@ -10,6 +10,7 @@ const STAGE_NOTES = [
   'Look over the fit, clearance and problem cards, and print a test piece for anything risky.',
   'Nothing is blocking this file. Read any hairball warnings, then slice it or send it to CAM.',
 ];
+const WALKTHROUGH_NOTE = 'Nothing is left to prepare. Follow the walkthrough at the machine.';
 
 function h(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -834,11 +835,17 @@ function renderNext() {
   } else {
     node.replaceChildren(emilyCard('waiting', 'NOTHING NEEDED', 'Emily has no questions right now.'));
   }
+  // It sits here as well as in the side panel, because that panel drops below the page in a narrow window.
+  if (!ui.walkthrough) {
+    const list = ui.state.walkthroughs;
+    node.firstChild.append(...list.map((w) => h('button', { type: 'button', class: 'primary', onclick: () => openWalkthrough(w.name) }, list.length === 1 ? 'Open walkthrough' : `Open ${w.title}`)));
+  }
 }
 
 function openWalkthrough(name) {
   ui.walkthrough = name;
   renderWalkthroughs();
+  renderNext();
 }
 
 function renderWalkthroughs() {
@@ -1028,7 +1035,8 @@ function renderChecks() {
 function computedStage() {
   const params = Object.values(ui.state.params);
   if (params.some((e) => e.status === 'needed' && e.required !== false)) return 0;
-  if (!ui.state.files.models.length) return 1;
+  // A job with no STL, like one cut from G-code, is ready once its walkthrough exists.
+  if (!ui.state.files.models.length) return ui.state.walkthroughs.length ? 3 : 1;
   // Warnings ask for a look but don't block, because a person can judge them. Failures and unknowns hold here.
   if (!['pass', 'warn'].includes(ui.check?.overall)) return 2;
   return 3;
@@ -1042,7 +1050,7 @@ function renderStage() {
     perch.classList.toggle('viewing', +perch.dataset.i === shown && shown !== current);
   });
   $('stagecat').style.transform = `translateY(${PERCH_Y[current]}px)`;
-  $('stagenote').textContent = STAGE_NOTES[shown];
+  $('stagenote').textContent = shown === 3 && !ui.state.files.models.length ? WALKTHROUGH_NOTE : STAGE_NOTES[shown];
 }
 document.querySelectorAll('.perch').forEach((perch) => {
   const choose = () => {
@@ -1102,8 +1110,15 @@ async function refresh(force = false) {
   // The question's own fields are exempt: it only redraws if the question itself changes.
   const typing = !force && document.activeElement?.matches('input, select, textarea') && !$('question').contains(document.activeElement);
   if (typing) return;
+  const state = JSON.parse(text);
+  if (ui.state && state.ui_build !== ui.state.ui_build) {
+    // The server now has newer page code. Wait for anything typed but unsaved, because a reload would lose it.
+    const unsaved = [...ui.answerDrafts.values(), ...ui.noteDrafts.values()].some(Boolean) || document.activeElement?.matches('input, textarea');
+    if (!unsaved) location.reload();
+    return;
+  }
   ui.stateText = text;
-  ui.state = JSON.parse(text);
+  ui.state = state;
   renderAll();
   runCheck();
 }

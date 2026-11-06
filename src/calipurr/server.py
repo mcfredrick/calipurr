@@ -6,6 +6,7 @@ must name this server as their Host, and writes must come from its own page.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shlex
 import subprocess
@@ -87,6 +88,8 @@ class App:
         self.check_cache: dict = {}
         # Requests arrive on separate threads, and each one reads params.toml, changes it and writes it back.
         self.write_lock = threading.Lock()
+        web = resources.files("calipurr") / "web"
+        self.ui_build = hashlib.sha256(b"".join((web / name).read_bytes() for name in ("app.js", "index.html", "style.css"))).hexdigest()
 
     def state(self) -> dict:
         machines = {}
@@ -94,6 +97,7 @@ class App:
             profile = profiles.load(name)
             machines[name] = {"kind": profile["kind"], "fields": profile["fields"]}
         return {
+            "ui_build": self.ui_build,
             "project": self.project.root.name,
             "root": str(self.project.root),
             "next": self.project.next_step(),

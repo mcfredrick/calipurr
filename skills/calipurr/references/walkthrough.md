@@ -49,6 +49,7 @@ SVG drawings can use `d-wood`, `d-part`, `d-plate`, `d-spoil`, `d-steel`, `d-voi
 - Safety first, in plain words. No puns.
 - Materials and tools as a checklist, with sizes the user needs to buy or find.
 - One action per list item. Name the exact file to run and the exact command to send.
+- Plain words for shop jargon. Explain any trade term the first time, or describe the thing instead. Spell out a procedure like touching off Z the first time it comes up.
 - Drawings of anything hard to describe, such as which way a piece faces. Draw them to scale from the real numbers, and label which values they use.
 - Simulated results where you have them, labeled as simulated.
 - What a good result looks like at each checkpoint, and what to do when it isn't.

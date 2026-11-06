@@ -26,7 +26,7 @@ That opens Emily's visual interface in your browser. It only listens on your own
 
 | In the GUI | Plain label | What it does |
 |---|---|---|
-| Cat tree | Project stages | Emily climbs as the project moves from Measure to Model, Check and Make |
+| Cat tree | Project stages | Emily climbs as the project moves from Measure to Model, Check and Make. A job with no STL reaches Make once it has a walkthrough. Clicking a stage shows what it means |
 | Next-step banner | What Emily needs next | Says plainly what you need to do to move on |
 | Kibble | Questions | Under the picture, one question at a time, with that dimension marked on the picture. Click any piece of kibble to jump to a question or change an answer |
 | Food bowl | Answers so far | Fills as you answer |
