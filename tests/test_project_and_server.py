@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import threading
 import time
@@ -255,6 +256,91 @@ def test_bowl_and_nudge_tell_an_agent_where_things_stand(project, capsys):
 
     assert main(["nudge", "--clear", *args]) == 0
     assert project.next_step() == ""
+
+
+class Lurker:
+    """Runs lurk on a thread, the way an agent's background command would."""
+
+    def __init__(self, project, timeout=20):
+        self.project = project
+        self.reason = None
+        self.thread = threading.Thread(target=self._run, args=(timeout,), daemon=True)
+        self.thread.start()
+        while not project.lurking():
+            time.sleep(0.01)
+
+    def _run(self, timeout):
+        self.reason = self.project.lurk(timeout)
+
+    def result(self):
+        self.thread.join(10)
+        return self.reason
+
+
+def test_lurk_returns_when_the_last_open_question_is_answered(project):
+    project.meow("bore", "Bore", "How wide?")
+    project.meow("color", "Color", "What color?", kind="text", required=False)
+    lurker = Lurker(project)
+
+    # An open optional question still leaves the user something to do.
+    project.answer("bore", 12.5)
+    time.sleep(1.2)
+    assert lurker.thread.is_alive()
+
+    project.answer("color", "Red")
+    assert lurker.result() == "answered"
+    assert project.handed() and not project.lurking()
+
+
+def test_lurk_waits_for_the_bell_while_the_user_does_a_physical_step(project):
+    project.meow("use", "Use", "Where?", kind="text")
+    project.answer("use", "Outdoors")
+    project.nudge("Print the gauge")
+    lurker = Lurker(project)
+    time.sleep(1.2)
+    assert lurker.thread.is_alive()
+
+    project.ring()
+    assert lurker.result() == "sent"
+    assert project.handed()
+
+    # The agent replying clears the "your agent has it" state.
+    project.nudge("Now measure it")
+    assert not project.handed()
+
+
+def test_answers_during_a_physical_step_do_not_end_the_wait_early(project):
+    project.nudge("Print the gauge")
+    project.meow("use", "Use", "Where?", kind="text")
+    lurker = Lurker(project)
+    time.sleep(0.7)
+    project.answer("use", "Outdoors")
+    time.sleep(1.2)
+    assert lurker.thread.is_alive()
+    project.ring()
+    assert lurker.result() == "sent"
+
+
+def test_lurk_times_out_and_cli_reports_it(project, capsys):
+    from calipurr.cli import main
+
+    project.meow("bore", "Bore", "How wide?")
+    assert main(["lurk", "--timeout", "0", "--json", "--project", str(project.root)]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["reason"] == "timeout" and out["needed"] == ["bore"] and out["dots"] == []
+    assert not project.lurking() and not project.handed()
+
+
+def test_bell_needs_a_waiting_agent_and_a_killed_one_stops_counting(project, served):
+    host = served()
+    status, body = call(host, "/api/bell", {})
+    assert status == 400 and b"No agent is waiting" in body
+
+    project.lurk_path.parent.mkdir(parents=True, exist_ok=True)
+    project.lurk_path.touch()
+    assert json.loads(call(host, "/api/state")[1])["lurking"] is True
+    os.utime(project.lurk_path, (time.time() - 60, time.time() - 60))
+    assert json.loads(call(host, "/api/state")[1])["lurking"] is False
 
 
 @pytest.mark.parametrize(

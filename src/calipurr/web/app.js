@@ -729,20 +729,34 @@ function renderNext() {
   const needed = params.filter((e) => e.required !== false && e.status === 'needed').length;
   const optional = params.filter((e) => e.required === false && e.status === 'needed').length;
   const node = $('next');
-  const copy = (opening) => {
+  const copy = (opening, primary = true) => {
     const text = `${opening} Read my answers and comments with: calipurr bowl --json --project "${ui.state.root}" and calipurr dots --json --project "${ui.state.root}"`;
-    return h('button', { type: 'button', class: 'primary', onclick: async () => {
+    return h('button', { type: 'button', class: primary ? 'primary' : '', onclick: async () => {
       await navigator.clipboard.writeText(text);
       toast('Copied. Paste it to your agent.', true);
     } }, 'Copy a message for your agent');
   };
-  if (needed) {
-    node.replaceChildren(emilyCard('', 'EMILY NEEDS YOU', `${needed} question${needed > 1 ? 's' : ''} left, just below the picture`));
+  const bell = (label, primary = true) => h('button', { type: 'button', class: primary ? 'primary' : '', onclick: async () => {
+    try {
+      await post('/api/bell', {});
+      toast('Sent to your agent.', true);
+    } catch (err) {
+      toast(err.message);
+    }
+    await refresh(true);
+  } }, label);
+  const handBack = (opening) => (ui.state.lurking ? bell('Dinner bell: send to agent') : copy(opening));
+  if (ui.state.handed) {
+    node.replaceChildren(emilyCard('waiting', 'SENT TO YOUR AGENT', 'Your agent has it. Nothing to do here for now.', copy('Here is my latest.', false)));
+  } else if (needed) {
+    const early = ui.state.lurking ? bell('Dinner bell: send what I have so far', false) : null;
+    node.replaceChildren(emilyCard('', 'EMILY NEEDS YOU', `${needed} question${needed > 1 ? 's' : ''} left, just below the picture`, early));
   } else if (ui.state.next) {
-    node.replaceChildren(emilyCard('', 'YOUR NEXT STEP', ui.state.next, copy(`I finished this step: ${ui.state.next}`)));
+    node.replaceChildren(emilyCard('', 'YOUR NEXT STEP', ui.state.next, handBack(`I finished this step: ${ui.state.next}`)));
   } else if (params.length) {
     const extra = optional ? h('span', { class: 'why' }, `${optional} optional question${optional > 1 ? 's' : ''} left, if you have time.`) : null;
-    node.replaceChildren(emilyCard('done', "THAT'S EVERYTHING FOR NOW", 'Your turn is done. Tell your agent you finished.', extra, copy("I answered Emily's questions.")));
+    const title = ui.state.lurking ? 'Your turn is done. Send it to your agent.' : 'Your turn is done. Tell your agent you finished.';
+    node.replaceChildren(emilyCard('done', "THAT'S EVERYTHING FOR NOW", title, extra, handBack("I answered Emily's questions.")));
   } else {
     node.replaceChildren(emilyCard('waiting', 'NOTHING NEEDED', 'Emily has no questions right now.'));
   }

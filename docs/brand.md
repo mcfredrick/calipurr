@@ -16,6 +16,7 @@ Each cat object does a real job, chosen because cat behavior already resembles t
 | Next-step banner | What Emily needs next | One line across the top that says plainly who has the next move | The cat stares at you until you act |
 | Kibble | Questions | A carousel under the picture asks one question at a time. Each question is a piece of kibble you can click, filled in once it's answered | Kibble goes in one piece at a time |
 | Food bowl | Answers so far | Fills as required answers come in | The cat tells you when something is missing |
+| Dinner bell | Send to agent | Appears in the banner while an agent is waiting | The copy button takes its place when no agent is waiting |
 | Yarn ball | Rotate | Drag to rotate the model | Batting a ball around |
 | Whiskers | Clearance check | Shows whether parts and machine limits have enough room | Cats use whiskers to judge gaps |
 | Cardboard box | Fit check | Shows "If it fits, I sits" when a part fits the machine | Cats and boxes |
@@ -42,6 +43,7 @@ A **kitten** (plain label: test piece) is a small print or cut that answers one 
 | `bowl` | `params` | List questions and answers |
 | `treat` | `answer` | Record an answer |
 | `nudge` | `next` | Tell the user what to do next |
+| `lurk` | `wait` | Wait for the user to finish in the GUI |
 | `dots` | `comments` | Read laser dot comments |
 | `kitten` | `test-piece` | Make and report test pieces |
 | `purrflight` | `check` | Pre-flight check |

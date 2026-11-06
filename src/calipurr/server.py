@@ -92,6 +92,8 @@ class App:
             "project": self.project.root.name,
             "root": str(self.project.root),
             "next": self.project.next_step(),
+            "lurking": self.project.lurking(),
+            "handed": self.project.handed(),
             "params": self.project.params(),
             "dots": self.project.dots(),
             "files": self.project.files(),
@@ -122,6 +124,9 @@ class App:
                 result = project.answer(body["key"], value, body.get("status", "measured"), body.get("note"))
             self.rebuilder.request()
             return result
+        if route == "/api/bell":
+            project.ring()
+            return {}
         if route == "/api/dots":
             return project.add_dot(body["file"], body["position"], body.get("text", ""))
         if route == "/api/dots/edit":

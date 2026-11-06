@@ -118,12 +118,16 @@ def _meow(args: argparse.Namespace) -> int:
     return 0
 
 
+def _where_things_stand(project: Project) -> dict:
+    needed = sorted(project.hungry())
+    return {"params": project.params(), "needed": needed, "ready": not needed, "next": project.next_step()}
+
+
 def _bowl(args: argparse.Namespace) -> int:
     project = Project(args.project)
     params = project.params()
     if args.json:
-        needed = sorted(project.hungry())
-        print(json.dumps({"params": params, "needed": needed, "ready": not needed, "next": project.next_step()}))
+        print(json.dumps(_where_things_stand(project)))
     elif not params:
         print("Nothing asked yet. Ask for a value: calipurr meow KEY --name NAME --ask QUESTION")
     else:
@@ -132,6 +136,23 @@ def _bowl(args: argparse.Namespace) -> int:
             optional = ", optional" if not entry.get("required", True) else ""
             print(f"{key}: {value}  [{entry['status']}{optional}]  {entry.get('name', '')}")
     return 1 if project.hungry() else 0
+
+
+def _lurk(args: argparse.Namespace) -> int:
+    project = Project(args.project)
+    if not args.json:
+        print("Lurking. Waiting for the user to send their turn back from the GUI.", flush=True)
+    try:
+        reason = project.lurk(args.timeout)
+    except KeyboardInterrupt:
+        return 130
+    if args.json:
+        print(json.dumps({"reason": reason, **_where_things_stand(project), "dots": project.dots()}))
+    elif reason == "timeout":
+        print("Nothing yet. Run this again to keep waiting.")
+    else:
+        print("The user sent their turn back. Read it with: calipurr bowl --json and calipurr dots --json")
+    return 1 if reason == "timeout" else 0
 
 
 def _treat(args: argparse.Namespace) -> int:
@@ -328,6 +349,9 @@ def _parser() -> argparse.ArgumentParser:
     p = add(sub, "nudge", "next", _nudge, "tell the user what to do next, shown at the top of the GUI", project=True)
     p.add_argument("text", nargs="?")
     p.add_argument("--clear", action="store_true", help="remove the current next step")
+
+    p = add(sub, "lurk", "wait", _lurk, "wait for the user to finish in the GUI; exits 1 on timeout", project=True)
+    p.add_argument("--timeout", type=float, help="give up after this many seconds (default: wait as long as it takes)")
 
     p = add(sub, "treat", "answer", _treat, "record an answer, treated as measured unless --assumed", project=True)
     p.add_argument("key")

@@ -316,6 +316,33 @@ def test_carousel_walks_through_questions_until_the_agents_turn(app):
     wait_for_question(page, "One more")
 
 
+def test_dinner_bell_hands_the_turn_back_to_a_waiting_agent(app):
+    page, project = app
+    project.nudge("Print the gauge")
+    project.meow("use", "Use", "Where?", kind="text")
+    page.wait_for_function("document.querySelector('#next').textContent.includes('1 question left')")
+    assert page.locator("#next button").count() == 0
+
+    result = {}
+    thread = threading.Thread(target=lambda: result.update(reason=project.lurk(30)), daemon=True)
+    thread.start()
+
+    # With an agent listening the user can speak up early, and then send the finished step.
+    page.wait_for_selector("#next button:has-text('send what I have so far')")
+    page.fill("#question textarea", "Outdoors")
+    page.click("#question .primary")
+    page.wait_for_function("document.querySelector('#next h2').textContent === 'Print the gauge'")
+    page.click("#next button:has-text('Dinner bell: send to agent')")
+    thread.join(10)
+    assert result["reason"] == "sent"
+    page.wait_for_function("document.querySelector('#next').textContent.includes('SENT TO YOUR AGENT')")
+
+    # The agent answering brings the banner back, with the copy button since nothing is waiting now.
+    project.nudge("Measure it")
+    page.wait_for_function("document.querySelector('#next h2').textContent === 'Measure it'")
+    assert "Copy a message" in page.inner_text("#next button")
+
+
 def test_polling_keeps_a_half_typed_answer_and_still_shows_agent_changes(app):
     page, project = app
     project.meow("bore", "Bore", "Measure the bore")

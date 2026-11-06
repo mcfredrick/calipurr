@@ -33,7 +33,8 @@ Run these from the part's project folder. Read the user's input before changing 
   - Laser dots are the user's and your comments. Don't use them to point out what to measure.
   - Add `--why "..."` when the reason isn't obvious, and `--optional` when you can move on without it. Required questions block progress.
 - Read answers: `calipurr bowl --json`. `ready` is true when no required question is left, and `needed` lists the rest. Build scripts should read `params.toml`.
-- After you finish a turn, say what the user should do next with `calipurr nudge "Print the socket gauge, then report which step fit"`. It appears at the top of the GUI once required questions are answered. Run `calipurr nudge --clear` when that step is done. The GUI can't message you, so the user tells you when they've finished.
+- After you finish a turn, say what the user should do next with `calipurr nudge "Print the socket gauge, then report which step fit"`. It appears at the top of the GUI once required questions are answered. Run `calipurr nudge --clear` when that step is done.
+- Wait for the user instead of asking them to come back and tell you: `calipurr lurk --json`. It returns when they answer the last open question or press the dinner bell in the GUI, and prints their answers and laser dots. `reason` is `sent` or `answered`, and `needed` may not be empty if they sent early to tell you something. Run it as a background task if your agent has them, so the conversation stays free. Otherwise use `--timeout` with a value under your command limit, and run it again whenever it exits 1. If you can't wait at all, skip it, and the GUI offers the user a message to copy.
 - Read comments pinned to models and photos: `calipurr dots --json`. Positions on models are in model coordinates, and positions on photos run from 0 to 1 across and down.
 - Check a model: `calipurr purrflight FILE --machine NAME --json`. Warnings mean look closer. They aren't verdicts, so tell the user what they'd need to check in a slicer.
 - Offer the visual interface when geometry is hard to discuss in words: ask the user to run `calipurr serve`. It reloads when files change.
@@ -53,4 +54,4 @@ Before designing a part that mates with a real object, or when a print or fit te
 - A part dimension: `calipurr treat KEY VALUE --note "how it was measured"`, with `--assumed` for guesses
 - A new machine: `calipurr adopt NAME --kind printer|cnc|laser`
 
-Every command has a plain alias if the user prefers it: `adopt`/`add`, `litter`/`list`, `vet`/`show`, `feed`/`set`, `hungry`/`missing`, `meow`/`ask`, `bowl`/`params`, `treat`/`answer`, `nudge`/`next`, `dots`/`comments`, `kitten`/`test-piece`, `purrflight`/`check`, `serve`/`gui`.
+Every command has a plain alias if the user prefers it: `adopt`/`add`, `litter`/`list`, `vet`/`show`, `feed`/`set`, `hungry`/`missing`, `meow`/`ask`, `bowl`/`params`, `treat`/`answer`, `nudge`/`next`, `lurk`/`wait`, `dots`/`comments`, `kitten`/`test-piece`, `purrflight`/`check`, `serve`/`gui`.

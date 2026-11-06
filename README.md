@@ -24,6 +24,7 @@ That opens Emily's visual interface in your browser. It only listens on your own
 | Next-step banner | What Emily needs next | Says plainly what you need to do to move on |
 | Kibble | Questions | Under the picture, one question at a time, with that dimension marked on the picture. Click any piece of kibble to jump to a question or change an answer |
 | Food bowl | Answers so far | Fills as you answer |
+| Dinner bell | Send to agent | Tells a waiting agent your turn is done |
 | Yarn ball | Rotate | Turn the model |
 | Laser dot | Point at this | Pin a comment to a spot on a model or photo. Click a dot again or use its x to remove it |
 | Paw | Pick a step | Click the gauge step that fit |
@@ -84,6 +85,7 @@ Profiles are saved in `~/.config/calipurr/machines/`, so they stay on your compu
 | `meow` | `ask` | Ask a question in the GUI: a number, free text or a choice |
 | `bowl` | `params` | List questions and answers (exits 1 if required ones are unanswered) |
 | `nudge` | `next` | Tell the user what to do next, shown at the top of the GUI |
+| `lurk` | `wait` | Wait for the user to finish in the GUI, then print their answers and comments (exits 1 on `--timeout`) |
 | `treat` | `answer` | Record an answer |
 | `dots` | `comments` | Read laser dot comments |
 | `kitten` | `test-piece` | Make gauges and cutouts, and report results |

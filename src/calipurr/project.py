@@ -3,6 +3,7 @@
 params.toml         questions for the user: needed, then assumed, measured or answered
 annotations.json    laser dots: comments pinned to a model or photo
 next.txt            what the agent says the user should do next
+.calipurr/          lurk, bell and handed: how the GUI hands the turn back to a waiting agent
 kittens/            small test pieces and what each one proved
 litter/             discarded files, kept until the user cleans them out
 .calipurr/lives/    earlier versions of params.toml
@@ -14,6 +15,7 @@ import json
 import math
 import os
 import shutil
+import time
 import tomllib
 from datetime import date, datetime
 from pathlib import Path
@@ -26,6 +28,9 @@ from .profiles import ASSUMED, MEASURED, NEEDED
 MODEL_SUFFIXES = {".stl"}
 PHOTO_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 MAX_LIVES = 9
+# A killed lurk leaves its file behind, so only a recently touched one counts as listening.
+LURK_STALE_S = 5
+LURK_POLL_S = 0.5
 NUMBER, TEXT, CHOICE = "number", "text", "choice"
 ANSWERED = "answered"
 QUESTION_FIELDS = ("name", "ask", "unit", "kind", "choices", "why", "required", "show", "at")
@@ -59,6 +64,9 @@ class Project:
         self.kittens_dir = self.root / "kittens"
         self.litter_dir = self.root / "litter"
         self.lives_dir = self.root / ".calipurr" / "lives"
+        self.lurk_path = self.root / ".calipurr" / "lurk"
+        self.bell_path = self.root / ".calipurr" / "bell"
+        self.handed_path = self.root / ".calipurr" / "handed"
 
     # Parameters
 
@@ -71,6 +79,7 @@ class Project:
         if self.params_path.exists():
             self._snapshot()
         _write_atomic(self.params_path, tomli_w.dumps({"params": params}))
+        self.handed_path.unlink(missing_ok=True)
 
     def meow(
         self,
@@ -163,10 +172,57 @@ class Project:
         return self.next_path.read_text().strip() if self.next_path.exists() else ""
 
     def nudge(self, text: str | None) -> None:
+        self.handed_path.unlink(missing_ok=True)
         if text:
             _write_atomic(self.next_path, text.strip() + "\n")
         else:
             self.next_path.unlink(missing_ok=True)
+
+    # Handing the turn back to a waiting agent
+
+    def lurking(self) -> bool:
+        return self.lurk_path.exists() and time.time() - self.lurk_path.stat().st_mtime < LURK_STALE_S
+
+    def handed(self) -> bool:
+        return self.handed_path.exists()
+
+    def ring(self) -> None:
+        if not self.lurking():
+            raise Hiss("No agent is waiting right now. Copy a message for it instead.")
+        self.bell_path.touch()
+
+    def _finished(self) -> bool:
+        return not self.next_step() and not any(e["status"] == NEEDED for e in self.params().values())
+
+    def lurk(self, timeout: float | None = None) -> str:
+        """Block until the user hands the turn back. Returns sent, answered or timeout.
+
+        Answering everything only counts if something was open during the wait.
+        Otherwise an agent waiting on a physical step would return straight away.
+        """
+        self.lurk_path.parent.mkdir(parents=True, exist_ok=True)
+        self.bell_path.unlink(missing_ok=True)
+        self.handed_path.unlink(missing_ok=True)
+        deadline = None if timeout is None else time.monotonic() + timeout
+        was_open = False
+        try:
+            while True:
+                self.lurk_path.touch()
+                reason = None
+                if self.bell_path.exists():
+                    self.bell_path.unlink()
+                    reason = "sent"
+                elif was_open and self._finished():
+                    reason = "answered"
+                if reason:
+                    self.handed_path.touch()
+                    return reason
+                was_open = was_open or bool(self.hungry())
+                if deadline is not None and time.monotonic() >= deadline:
+                    return "timeout"
+                time.sleep(LURK_POLL_S)
+        finally:
+            self.lurk_path.unlink(missing_ok=True)
 
     # Nine lives
 
