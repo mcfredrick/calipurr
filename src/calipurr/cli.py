@@ -73,6 +73,19 @@ def _vet(args: argparse.Namespace) -> int:
         value = entry.get("value", "-")
         dated = f", {entry['date']}" if "date" in entry else ""
         print(f"  {key}: {value}  [{entry['status']}{dated}]")
+    for key, entry in profile.get("notes", {}).items():
+        print(f"  {key}: {entry['value']}  [{entry['date']}]")
+    return 0
+
+
+def _tag(args: argparse.Namespace) -> int:
+    if args.remove == (args.text is not None):
+        raise Hiss("Give either the tag's text or --remove")
+    profile = profiles.tag(args.name, args.key, None if args.remove else args.text)
+    if args.json:
+        print(json.dumps(profile.get("notes", {})))
+    else:
+        print(f"Removed {args.key}." if args.remove else f"Nom. {args.name} now wears {args.key}.")
     return 0
 
 
@@ -328,6 +341,12 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("value")
     p.add_argument("--assumed", action="store_true", help="the value is a guess or a spec sheet number")
     p.add_argument("--note", help="how you got this value")
+
+    p = add(sub, "tag", "note", _tag, "keep a fact about a machine in words, such as its controller or home corner")
+    p.add_argument("name")
+    p.add_argument("key")
+    p.add_argument("text", nargs="?")
+    p.add_argument("--remove", action="store_true", help="delete this tag")
 
     p = add(sub, "hungry", "missing", _hungry, "list machine values still needed; exits 1 if any are")
     p.add_argument("name")

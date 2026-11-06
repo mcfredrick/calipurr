@@ -38,7 +38,7 @@ That opens Emily's visual interface in your browser. It only listens on your own
 | Laser dot | Point at this | Pin a comment to a spot on a model or photo. Click a dot again or use its x to remove it |
 | Paw | Pick a step | Click the gauge step that fit |
 | Report card | Test results | Records which step fit and what it measured |
-| Collar tag | Machine | Choose which machine to check against |
+| Collar tag | Machine | Choose a machine to see all its specs and check against it |
 | Cardboard box, whiskers, hairball | Fit, clearance, problems | The results of the pre-flight checks |
 | Nine lives | Version history | Go back to earlier values |
 | Litter box | Discarded | Set files aside and rescue them later |
@@ -91,6 +91,7 @@ Profiles are saved in `~/.config/calipurr/machines/`, so they stay on your compu
 | `vet` | `show` | Show a machine's values and where they came from |
 | `feed` | `set` | Record a machine value, with `--assumed` for guesses |
 | `hungry` | `missing` | List machine values still needed (exits 1 if any are) |
+| `tag` | `note` | Keep a fact about a machine in words, such as its controller or home corner |
 | `meow` | `ask` | Ask a question in the GUI: a number, free text or a choice |
 | `catwalk` | `walkthrough` | Build a step-by-step guide that the GUI shows, as one file that works offline |
 | `bowl` | `params` | List questions and answers (exits 1 if required ones are unanswered) |

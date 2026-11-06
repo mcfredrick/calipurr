@@ -95,7 +95,7 @@ class App:
         machines = {}
         for name in profiles.litter():
             profile = profiles.load(name)
-            machines[name] = {"kind": profile["kind"], "fields": profile["fields"]}
+            machines[name] = {"kind": profile["kind"], "fields": profile["fields"], "notes": profile.get("notes", {})}
         return {
             "ui_build": self.ui_build,
             "project": self.project.root.name,

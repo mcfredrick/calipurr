@@ -41,6 +41,11 @@ header small{color:#c9c5ba}
 #walklist{display:grid;gap:4px;margin-top:4px}
 #walklist button{font:inherit;font-size:13px;text-align:left;padding:6px 8px;background:var(--paper);border:1px solid var(--line);border-radius:8px;cursor:pointer}
 #walklist button[aria-current=true]{border-color:var(--red);font-weight:600}
+.specs{margin:6px 0 0;font-size:13px}
+.spec{padding:4px 0;border-top:1px solid var(--line)}
+.spec dt{color:var(--muted);font-size:12px}
+.spec dd{margin:0;overflow-wrap:anywhere;white-space:pre-line}
+.spec small{color:var(--muted)}
 .photos{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}
 .photos button{padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer;line-height:0}
 .photos img{width:56px;height:56px;object-fit:cover;border-radius:5px}

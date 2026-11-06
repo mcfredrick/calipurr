@@ -69,5 +69,6 @@ Before sending the user to the machine for anything with more than a few steps, 
 - A guess or a spec sheet number: add `--assumed`
 - A part dimension: `calipurr treat KEY VALUE --note "how it was measured"`, with `--assumed` for guesses
 - A new machine: `calipurr adopt NAME --kind printer|cnc|laser`
+- Any other fact about a machine, in words: `calipurr tag NAME KEY "text"`, such as its controller, home corner, what homing does, or its touch plate. `calipurr vet` shows tags with the values, and the GUI shows them under the collar tag. Save facts here that outlast the project, and read them before asking the user again.
 
-Every command has a plain alias if the user prefers it: `adopt`/`add`, `litter`/`list`, `vet`/`show`, `feed`/`set`, `hungry`/`missing`, `meow`/`ask`, `bowl`/`params`, `treat`/`answer`, `nudge`/`next`, `lurk`/`wait`, `dots`/`comments`, `kitten`/`test-piece`, `catwalk`/`walkthrough`, `purrflight`/`check`, `serve`/`gui`.
+Every command has a plain alias if the user prefers it: `adopt`/`add`, `litter`/`list`, `vet`/`show`, `feed`/`set`, `tag`/`note`, `hungry`/`missing`, `meow`/`ask`, `bowl`/`params`, `treat`/`answer`, `nudge`/`next`, `lurk`/`wait`, `dots`/`comments`, `kitten`/`test-piece`, `catwalk`/`walkthrough`, `purrflight`/`check`, `serve`/`gui`.

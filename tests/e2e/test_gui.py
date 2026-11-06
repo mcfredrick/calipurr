@@ -534,3 +534,21 @@ def test_page_reloads_for_newer_code_but_waits_for_unsaved_typing(app):
         page.fill("#q-bore", "")
         page.evaluate("document.activeElement.blur()")
     assert page.evaluate("window.__stale") is None
+
+
+def test_collar_tag_shows_a_machines_specs_and_tags(app):
+    page, _ = app
+    profiles.adopt("router", "cnc")
+    profiles.feed("router", "travel_x_mm", "440", "measured", "jogged it")
+    profiles.feed("router", "collet_mm", "3.175", "assumed")
+    profiles.tag("router", "home_corner", "Front-left")
+    page.wait_for_selector('#machine option[value="router"]', state="attached")
+    page.select_option("#machine", "router")
+    specs = page.locator("#machinepanel .specs")
+    specs.wait_for()
+    text = specs.inner_text()
+    assert "Usable travel in X (mm)" in text and "440" in text and "measured" in text
+    assert "3.175" in text and "assumed" in text
+    assert "Home corner" in text and "Front-left" in text
+    # Values nobody has supplied stay fillable.
+    assert page.locator('input[data-machine-field="travel_y_mm"]').is_visible()

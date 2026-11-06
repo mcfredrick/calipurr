@@ -69,6 +69,7 @@ KINDS: dict[str, tuple[Field, ...]] = {
 }
 
 _NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
+_TAG = re.compile(r"[a-z0-9][a-z0-9_]{0,63}")
 
 
 def home() -> Path:
@@ -129,6 +130,24 @@ def feed(name: str, key: str, raw: str, status: str, note: str | None = None) ->
     if note:
         entry["note"] = note
     profile["fields"][key] = entry
+    _save(name, profile)
+    return profile
+
+
+def tag(name: str, key: str, text: str | None) -> dict:
+    """Keep a fact about a machine in words, such as its controller or home corner. Nothing is ever required here."""
+    if not _TAG.fullmatch(key):
+        raise Hiss(f"Tag names use lowercase letters, digits and underscores, got {key!r}")
+    profile = load(name)
+    notes = profile.setdefault("notes", {})
+    if text is None:
+        if key not in notes:
+            raise Hiss(f"{name} has no tag named {key}")
+        del notes[key]
+    else:
+        if not text.strip():
+            raise Hiss(f"{key} needs some text. To delete it, use --remove")
+        notes[key] = {"value": text.strip(), "date": date.today().isoformat()}
     _save(name, profile)
     return profile
 

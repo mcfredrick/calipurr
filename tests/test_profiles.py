@@ -94,3 +94,33 @@ def test_pun_commands_and_plain_aliases_do_the_same_thing(capsys):
     listed = json.loads(capsys.readouterr().out)
     assert listed["bambu"]["kind"] == "printer"
     assert "nozzle_mm" not in listed["bambu"]["needed"]
+
+
+def test_tags_keep_facts_in_words_and_survive_feeding(capsys):
+    main(["adopt", "router", "--kind", "cnc"])
+    assert main(["tag", "router", "home_corner", "Front-left"]) == 0
+    main(["feed", "router", "travel_x_mm", "440"])
+    capsys.readouterr()
+    main(["vet", "router"])
+    shown = capsys.readouterr().out
+    assert "home_corner: Front-left" in shown and "travel_x_mm: 440.0" in shown
+    # A tag is never a question, so it can't make a machine hungry or fill a required value.
+    assert "home_corner" not in needed(capsys, "router")[1] and "travel_y_mm" in needed(capsys, "router")[1]
+    assert main(["tag", "router", "home_corner", "--remove"]) == 0
+    assert "notes" not in profiles.load("router") or not profiles.load("router")["notes"]
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["tag", "router", "Bad Name", "text"],
+        ["tag", "router", "home", "   "],
+        ["tag", "router", "home"],
+        ["tag", "router", "home", "text", "--remove"],
+        ["tag", "router", "missing", "--remove"],
+    ],
+)
+def test_unclear_tags_are_refused(argv, capsys):
+    main(["adopt", "router", "--kind", "cnc"])
+    assert main(argv) != 0
+    assert not profiles.load("router").get("notes")

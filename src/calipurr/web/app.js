@@ -985,13 +985,21 @@ function renderMachines() {
   const panel = $('machinepanel');
   const machine = machines[ui.machine];
   if (!machine) {
-    panel.replaceChildren(h('b', {}, 'Machine'), h('p', {}, Object.keys(machines).length ? 'Choose one from the collar tag to check fit.' : 'Add one with calipurr adopt NAME --kind printer, cnc or laser.'));
+    panel.replaceChildren(h('b', {}, 'Machine'), h('p', {}, Object.keys(machines).length ? 'Choose one from the collar tag to see its specs and check fit.' : 'Add one with calipurr adopt NAME --kind printer, cnc or laser.'));
     return;
   }
   const needed = Object.entries(machine.fields).filter(([, f]) => f.status === 'needed');
+  const known = Object.entries(machine.fields).filter(([, f]) => f.status !== 'needed');
+  const spec = (label, value, detail, title) => h('div', { class: 'spec', title },
+    h('dt', {}, label),
+    h('dd', {}, String(value), detail ? h('small', {}, ` ${detail}`) : null));
+  const tagName = (key) => key.replaceAll('_', ' ').replace(/^./, (c) => c.toUpperCase());
   panel.replaceChildren(
     h('b', {}, `${ui.machine} (${machine.kind})`),
-    needed.length ? h('p', {}, 'Emily needs these to check fit.') : h('p', {}, 'All values on file.'),
+    h('dl', { class: 'specs' },
+      ...known.map(([, f]) => spec(f.ask, f.value, f.status, [f.note, f.date].filter(Boolean).join(', '))),
+      ...Object.entries(machine.notes).map(([key, n]) => spec(tagName(key), n.value, null, n.date))),
+    needed.length ? h('p', {}, 'Emily needs these to check fit.') : null,
     ...needed.map(([key, field]) => {
       const input = h('input', { 'aria-label': field.ask, 'data-machine-field': key });
       const status = h('select', { 'aria-label': `How you know: ${field.ask}` }, h('option', { value: 'measured' }, 'Measured'), h('option', { value: 'assumed' }, 'Assumed'));

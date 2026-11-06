@@ -39,6 +39,7 @@ A **kitten** (plain label: test piece) is a small print or cut that answers one 
 | `litter` | `list` | List machines |
 | `vet` | `show` | Inspect a machine's values |
 | `feed` | `set` | Record a machine value |
+| `tag` | `note` | Keep a fact about a machine in words |
 | `hungry` | `missing` | List machine values still needed |
 | `meow` | `ask` | Ask the user a question in the GUI |
 | `bowl` | `params` | List questions and answers |
