@@ -24,6 +24,7 @@ Skip the kitten when it would take about as long as the real part, or when a fai
 
 ## Designing a stepped gauge
 
+- Check the depth of engagement first. A stepped gauge only works if the mating feature can reach every step, so a short stem or shallow socket needs separate lettered test pieces, each with one size, in place of steps.
 - Use `calipurr kitten gauge`, which handles the labels and the size table. Span the expected size in both directions. Steps of 0.2 mm suit FDM printing as a starting point.
 - Print it in the same orientation and material as the final part, because both change the fit.
 - Label every step so the user can report a result by name. Counting steps from an end is easy to get wrong.
