@@ -10,7 +10,7 @@ import trimesh
 
 playwright_api = pytest.importorskip("playwright.sync_api")
 
-from calipurr import profiles  # noqa: E402
+from calipurr import catwalk, profiles  # noqa: E402
 from calipurr.project import Project  # noqa: E402
 from calipurr.server import make_server  # noqa: E402
 
@@ -463,3 +463,24 @@ def test_a_note_saves_without_answering_and_survives_a_direct_click_on_save(app)
     page.wait_for_timeout(300)
     assert project.params()["other"]["comment"] == "Not sure yet"
     assert project.params()["other"]["status"] == "needed"
+
+
+def test_a_walkthrough_opens_in_the_gui_with_scripts_blocked_and_returns_to_the_model(app):
+    page, project = app
+    folder = project.root / "walkthroughs"
+    folder.mkdir()
+    (folder / "job.body.html").write_text('<section class="part"><h2>Part</h2><article class="step"><h3>First step</h3></article></section>')
+    catwalk.build(project, "walkthroughs/job.body.html", "My job")
+    page.click('#walklist button:has-text("My job")')
+    frame = page.frame_locator("#walkframe")
+    assert frame.locator(".step .num").inner_text() == "1"
+    assert frame.locator(".step h3").inner_text() == "First step"
+    assert page.locator("#view").is_hidden()
+    response = page.request.get(page.url + "walkthroughs/job.html")
+    assert "default-src 'none'" in response.headers["content-security-policy"]
+    # A poll must not reload the page out from under someone reading it.
+    source = page.get_attribute("#walkframe", "src")
+    page.wait_for_timeout(2500)
+    assert page.get_attribute("#walkframe", "src") == source
+    page.click("#walkclose")
+    assert page.locator("#walkpanel").is_hidden() and page.locator("#view").is_visible()

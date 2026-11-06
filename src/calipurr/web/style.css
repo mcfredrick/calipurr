@@ -31,6 +31,16 @@ header small{color:#c9c5ba}
 .answer input[inputmode=decimal],.answer textarea,.answer select{font:inherit;padding:6px 8px;border:1px solid #b9b19c;border-radius:8px;background:#fff}
 .answer input[inputmode=decimal]{width:120px}
 .qnote{display:block;width:100%;font:inherit;font-size:13px;padding:6px 8px;margin:6px 0;border:1px solid #b9b19c;border-radius:8px;background:#fff;resize:vertical}
+#walkpanel[hidden],#workcard[hidden]{display:none}
+#walkpanel{display:flex;flex-direction:column;gap:8px;min-height:80vh}
+.walkbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.walkbar h2{margin:0 auto 0 0;font-size:17px}
+.walkbar a{color:#8f211c;font-size:12px}
+.walkbar button{font:inherit;padding:6px 12px;background:var(--ink);color:var(--paper);border:0;border-radius:8px;cursor:pointer}
+#walkframe{flex:1;width:100%;min-height:70vh;border:1px solid var(--line);border-radius:8px;background:#fff}
+#walklist{display:grid;gap:4px;margin-top:4px}
+#walklist button{font:inherit;font-size:13px;text-align:left;padding:6px 8px;background:var(--paper);border:1px solid var(--line);border-radius:8px;cursor:pointer}
+#walklist button[aria-current=true]{border-color:var(--red);font-weight:600}
 .photos{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}
 .photos button{padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer;line-height:0}
 .photos img{width:56px;height:56px;object-fit:cover;border-radius:5px}

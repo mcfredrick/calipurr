@@ -33,6 +33,7 @@ That opens Emily's visual interface in your browser. It only listens on your own
 | Dinner bell | Send to agent | Tells a waiting agent your turn is done |
 | Yarn ball | Rotate | Turn the model |
 | Photo drop | Add a photo | Drop a JPG, PNG, WebP or GIF anywhere on the page to attach it to the current question. Your agent can open it |
+| Catwalk | Walkthroughs | Step-by-step instructions from your agent, shown right in the GUI, with a tab you can print |
 | Question note | Note for your agent | Write anything beside an answer, such as what a photo shows. A note doesn't count as the answer |
 | Laser dot | Point at this | Pin a comment to a spot on a model or photo. Click a dot again or use its x to remove it |
 | Paw | Pick a step | Click the gauge step that fit |
@@ -91,6 +92,7 @@ Profiles are saved in `~/.config/calipurr/machines/`, so they stay on your compu
 | `feed` | `set` | Record a machine value, with `--assumed` for guesses |
 | `hungry` | `missing` | List machine values still needed (exits 1 if any are) |
 | `meow` | `ask` | Ask a question in the GUI: a number, free text or a choice |
+| `catwalk` | `walkthrough` | Build a step-by-step guide that the GUI shows, as one file that works offline |
 | `bowl` | `params` | List questions and answers (exits 1 if required ones are unanswered) |
 | `nudge` | `next` | Tell the user what to do next, shown at the top of the GUI |
 | `lurk` | `wait` | Wait for the user to finish in the GUI, then print their answers and comments (exits 1 on `--timeout`) |

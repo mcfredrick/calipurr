@@ -836,6 +836,32 @@ function renderNext() {
   }
 }
 
+function openWalkthrough(name) {
+  ui.walkthrough = name;
+  renderWalkthroughs();
+}
+
+function renderWalkthroughs() {
+  const list = ui.state.walkthroughs;
+  $('catwalk').hidden = !list.length;
+  const shown = list.find((w) => w.name === ui.walkthrough);
+  $('walklist').replaceChildren(...list.map((w) => h('button', { type: 'button', 'aria-current': w === shown ? 'true' : 'false', onclick: () => openWalkthrough(w.name) }, w.title)));
+  const wasHidden = $('workcard').hidden;
+  $('walkpanel').hidden = !shown;
+  $('workcard').hidden = !!shown;
+  if (shown) {
+    const url = `/walkthroughs/${encodeURIComponent(shown.name)}`;
+    const versioned = `${url}?v=${shown.mtime}`;
+    $('walktitle').textContent = shown.title;
+    $('walkopen').href = url;
+    // Setting the same address again would throw away the reader's place on every poll.
+    if ($('walkframe').getAttribute('src') !== versioned) $('walkframe').src = versioned;
+  } else if (wasHidden) {
+    ui.walkthrough = null;
+    resize();
+  }
+}
+
 function renderLives() {
   const lives = ui.state.lives;
   const nodes = lives.map((life, index) => h('button', {
@@ -1040,6 +1066,7 @@ function renderAll() {
   renderCarousel();
   renderBowl();
   renderLives();
+  renderWalkthroughs();
   renderComments();
   renderReport();
   renderLitter();
@@ -1087,3 +1114,5 @@ await refresh(true);
 if (currentGauge()) setMode('paw');
 animate();
 setInterval(() => refresh().catch(() => toast('Lost contact with Calipurr. Is it still running?')), 1500);
+
+$('walkclose').addEventListener('click', () => openWalkthrough(null));

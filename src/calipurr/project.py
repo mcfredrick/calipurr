@@ -6,12 +6,14 @@ annotations.json    laser dots: comments pinned to a model or photo
 next.txt            what the agent says the user should do next
 .calipurr/          lurk, bell and handed: how the GUI hands the turn back to a waiting agent
 kittens/            small test pieces and what each one proved
+walkthroughs/       step-by-step guides: NAME.body.html is written by hand, NAME.html is built
 litter/             discarded files, kept until the user cleans them out
 .calipurr/lives/    earlier versions of params.toml
 """
 
 from __future__ import annotations
 
+import html
 import itertools
 import json
 import math
@@ -30,6 +32,7 @@ from .profiles import ASSUMED, MEASURED, NEEDED
 
 MODEL_SUFFIXES = {".stl"}
 PHOTO_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+BODY_SUFFIX = ".body.html"
 MAX_LIVES = 9
 # A killed lurk leaves its file behind, so only a recently touched one counts as listening.
 LURK_STALE_S = 5
@@ -105,6 +108,7 @@ class Project:
         self.next_path = self.root / "next.txt"
         self.kittens_dir = self.root / "kittens"
         self.litter_dir = self.root / "litter"
+        self.walkthroughs_dir = self.root / "walkthroughs"
         self.lives_dir = self.root / ".calipurr" / "lives"
         self.lurk_path = self.root / ".calipurr" / "lurk"
         self.bell_path = self.root / ".calipurr" / "bell"
@@ -404,6 +408,23 @@ class Project:
                 if kind and path.is_file():
                     result[kind].append(self._describe(path))
         return result
+
+    def walkthroughs(self) -> list[dict]:
+        if not self.walkthroughs_dir.is_dir():
+            return []
+        found = []
+        for path in sorted(self.walkthroughs_dir.glob("*.html")):
+            if path.name.endswith(BODY_SUFFIX):
+                continue
+            title = re.search(r"<title>(.*?)</title>", path.read_text(), re.S)
+            found.append({"name": path.name, "title": html.unescape(title[1]) if title else path.stem, "mtime": path.stat().st_mtime})
+        return found
+
+    def resolve_walkthrough(self, name: str) -> Path:
+        path = self.walkthroughs_dir / Path(name).name
+        if Path(name).name != name or path.suffix != ".html" or name.endswith(BODY_SUFFIX) or not path.is_file():
+            raise Hiss(f"No walkthrough named {name} in this project")
+        return path
 
     def _describe(self, path: Path) -> dict:
         return {"name": path.relative_to(self.root).as_posix(), "mtime": path.stat().st_mtime}

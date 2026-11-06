@@ -56,6 +56,13 @@ Before designing a part that mates with a real object, or when a print or fit te
 - Make a cutout: `calipurr kitten cut FILE --keep-above Z --name NAME`
 - Read results: `calipurr kitten list --json`. The user can report in the GUI, or you can record what they tell you with `calipurr kitten report NAME --step LETTER --measured MM`.
 
+## Walkthroughs
+
+Before sending the user to the machine for anything with more than a few steps, write a walkthrough and show it in the GUI. Read [the walkthrough playbook](references/walkthrough.md) first.
+
+- Build one: `calipurr catwalk walkthroughs/NAME.body.html --title "..." --kicker "..."`. It writes `walkthroughs/NAME.html`, which appears in the GUI under Catwalk. Rebuild after any change that affects the instructions.
+- Point the user to it with `calipurr nudge`.
+
 ## Recording values
 
 - A value the user measured or verified: `calipurr feed NAME KEY VALUE --note "how it was measured"`
@@ -63,4 +70,4 @@ Before designing a part that mates with a real object, or when a print or fit te
 - A part dimension: `calipurr treat KEY VALUE --note "how it was measured"`, with `--assumed` for guesses
 - A new machine: `calipurr adopt NAME --kind printer|cnc|laser`
 
-Every command has a plain alias if the user prefers it: `adopt`/`add`, `litter`/`list`, `vet`/`show`, `feed`/`set`, `hungry`/`missing`, `meow`/`ask`, `bowl`/`params`, `treat`/`answer`, `nudge`/`next`, `lurk`/`wait`, `dots`/`comments`, `kitten`/`test-piece`, `purrflight`/`check`, `serve`/`gui`.
+Every command has a plain alias if the user prefers it: `adopt`/`add`, `litter`/`list`, `vet`/`show`, `feed`/`set`, `hungry`/`missing`, `meow`/`ask`, `bowl`/`params`, `treat`/`answer`, `nudge`/`next`, `lurk`/`wait`, `dots`/`comments`, `kitten`/`test-piece`, `catwalk`/`walkthrough`, `purrflight`/`check`, `serve`/`gui`.

@@ -5,7 +5,7 @@ import json
 import sys
 import webbrowser
 
-from . import __version__, profiles
+from . import __version__, catwalk, profiles
 from .errors import Hiss, NeedsConfirmation
 from .profiles import ASSUMED, MEASURED
 from .project import Project
@@ -158,6 +158,12 @@ def _lurk(args: argparse.Namespace) -> int:
 def _treat(args: argparse.Namespace) -> int:
     entry = Project(args.project).answer(args.key, args.value, ASSUMED if args.assumed else MEASURED, args.note)
     print(json.dumps({args.key: entry}) if args.json else f"Nom. {args.key} is {_shown(entry)}, {entry['status']}.")
+    return 0
+
+
+def _catwalk(args: argparse.Namespace) -> int:
+    built = catwalk.build(Project(args.project), args.source, args.title, args.kicker)
+    print(json.dumps(built) if args.json else f"Strutting. {built['file']} has {built['steps']} steps in {built['parts']} parts. Open it in the GUI.")
     return 0
 
 
@@ -358,6 +364,11 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("value")
     p.add_argument("--assumed", action="store_true", help="the value is a guess")
     p.add_argument("--note", help="how you got this value")
+
+    p = add(sub, "catwalk", "walkthrough", _catwalk, "build a step-by-step walkthrough the GUI can show", project=True)
+    p.add_argument("source", help="the body to build, named NAME.body.html")
+    p.add_argument("--title", required=True, help="the walkthrough's title")
+    p.add_argument("--kicker", help="a short line above the title, such as the machine and bit")
 
     add(sub, "dots", "comments", _dots, "read the user's laser dot comments", project=True)
 

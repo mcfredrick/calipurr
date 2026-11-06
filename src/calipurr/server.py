@@ -34,6 +34,8 @@ CONTENT_TYPES = {
 }
 BUILD_TIMEOUT_S = 300
 MAX_BODY_BYTES = 1_000_000
+# Walkthroughs share this page's address, so they get no scripts and can only be framed by Calipurr.
+WALKTHROUGH_POLICY = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors 'self'"
 MAX_PHOTO_BYTES = 50_000_000
 
 
@@ -100,6 +102,7 @@ class App:
             "params": self.project.params(),
             "dots": self.project.dots(),
             "files": self.project.files(),
+            "walkthroughs": self.project.walkthroughs(),
             "kittens": kitten.kittens(self.project),
             "lives": self.project.lives(),
             "discarded": self.project.discarded(),
@@ -186,8 +189,10 @@ def _handler(app: App, port_holder: dict) -> type[BaseHTTPRequestHandler]:
         def log_message(self, format, *args):  # noqa: A002
             pass
 
-        def _send(self, status: HTTPStatus, body: bytes, content_type: str) -> None:
+        def _send(self, status: HTTPStatus, body: bytes, content_type: str, policy: str | None = None) -> None:
             self.send_response(status)
+            if policy:
+                self.send_header("Content-Security-Policy", policy)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
@@ -225,6 +230,9 @@ def _handler(app: App, port_holder: dict) -> type[BaseHTTPRequestHandler]:
                 elif url.path.startswith("/file/"):
                     path = app.project.resolve_file(unquote(url.path[len("/file/") :]))
                     self._send(HTTPStatus.OK, path.read_bytes(), CONTENT_TYPES[path.suffix.lower()])
+                elif url.path.startswith("/walkthroughs/"):
+                    path = app.project.resolve_walkthrough(unquote(url.path[len("/walkthroughs/") :]))
+                    self._send(HTTPStatus.OK, path.read_bytes(), CONTENT_TYPES[".html"], WALKTHROUGH_POLICY)
                 else:
                     self._static(url.path)
             except (Hiss, KeyError) as err:

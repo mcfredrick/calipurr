@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import trimesh
 
-from calipurr import profiles
+from calipurr import catwalk, profiles
 from calipurr.errors import Hiss
 from calipurr.project import MAX_LIVES, Project, length_value
 from calipurr.server import make_server
@@ -450,3 +450,62 @@ def test_photo_upload_needs_calipurrs_own_page(project):
     finally:
         server.shutdown()
         server.server_close()
+
+
+WALK_BODY = """<p class="lede">Intro</p>
+<section class="part"><h2>First &amp; only</h2>
+<article class="step">
+  <h3>Do <em>this</em></h3>
+  <img src="pic.png" alt="A picture">
+</article>
+<article class="step"><h3>Then that</h3></article>
+</section>
+"""
+
+
+def write_walk(project, body=WALK_BODY):
+    folder = project.root / "walkthroughs"
+    folder.mkdir(exist_ok=True)
+    (folder / "pic.png").write_bytes(PNG)
+    (folder / "job.body.html").write_text(body)
+    return "walkthroughs/job.body.html"
+
+
+def test_catwalk_numbers_steps_lists_them_and_packs_images(project):
+    built = catwalk.build(project, write_walk(project), "A <job>", "MPCNC")
+    assert built == {"file": "walkthroughs/job.html", "parts": 1, "steps": 2}
+    page = (project.root / built["file"]).read_text()
+    assert '<div class="num">2</div>' in page and 'href="#s2"><span>2</span>Then that' in page
+    assert "<span>1</span>Do this" in page and "<title>A &lt;job&gt;</title>" in page
+    assert 'src="pic.png"' not in page and "data:image/png;base64," in page
+    assert page.count('<div class="step-body">') == page.count("</div></article>") == 2
+    assert project.walkthroughs() == [{"name": "job.html", "title": "A <job>", "mtime": pytest.approx((project.root / built["file"]).stat().st_mtime)}]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        '<section class="part"><h2>P</h2><article class="step"><p>No heading</p></article></section>',
+        '<section class="part"><p>No heading</p></section>',
+        '<article class="step"><h3>Outside any part</h3></article>',
+        '<section class="part"><h2>P</h2><article class="step"><h3>Open</h3></section>',
+        "<p>No parts</p>",
+        '<section class="part"><h2>P</h2><script>x()</script></section>',
+        '<section class="part"><h2 onclick="x()">P</h2></section>',
+        '<section class="part"><h2>P</h2><img alt="x" src="https://example.com/a.png"></section>',
+        '<section class="part"><h2>P</h2><img alt="x" src="missing.png"></section>',
+        '<section class="part"><h2>P</h2><img alt="x" src="../../secret.png"></section>',
+        '<section class="part"><h2>P</h2><img src="pic.png"></section>',
+    ],
+)
+def test_catwalk_refuses_bodies_that_would_break_or_leave_the_page(project, body):
+    with pytest.raises(Hiss):
+        catwalk.build(project, write_walk(project, body), "Job")
+    assert project.walkthroughs() == []
+
+
+@pytest.mark.parametrize("name", ["job.body.html", "../params.toml", "missing.html"])
+def test_only_built_walkthroughs_can_be_opened(project, name):
+    catwalk.build(project, write_walk(project), "Job")
+    with pytest.raises(Hiss):
+        project.resolve_walkthrough(name)
