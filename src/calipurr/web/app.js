@@ -290,12 +290,12 @@ function syncPins() {
   });
 }
 
-// Where each question's dimension sits on the picture. Unlike dots, these belong to the question.
+// The current question's dimension. It belongs to the question, unlike dots, which are comments.
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const marksLayer = overlay.appendChild(document.createElementNS(SVG_NS, 'svg'));
 marksLayer.id = 'marks';
-let marks = [];
+let mark = null;
 
 function svg(tag, attrs = {}) {
   const node = document.createElementNS(SVG_NS, tag);
@@ -312,69 +312,45 @@ function markLabel(key, entry) {
   return entry.value === undefined ? name : `${name}: ${valueLabel(entry)}`;
 }
 
-function syncMarks() {
-  const entries = ui.state ? Object.entries(ui.state.params).filter(([, e]) => e.at && e.show === ui.file) : [];
-  // Drawn last so the current question sits on top of the others.
-  entries.sort(([a], [b]) => (a === ui.activeMark) - (b === ui.activeMark));
-  marks = entries.map(([key, entry]) => {
-    const active = key === ui.activeMark;
-    const group = svg('g', { class: `mark${active ? ' active' : ''}`, 'data-key': key });
-    const halo = svg('line', { class: 'halo' });
-    const line = svg('line', { class: 'span' });
-    const ends = entry.at.map(() => svg('circle', { r: active ? 4.5 : 3 }));
-    const leader = svg('line', { class: 'leader' });
-    const text = svg('text');
-    text.textContent = markLabel(key, entry);
-    text.onclick = () => goToQuestion(key);
-    group.append(halo, line, leader, ...ends, text);
-    return { entry, active, group, halo, line, leader, ends, text };
-  });
-  marksLayer.replaceChildren(...marks.map((m) => m.group));
-}
-
-function setActiveMark(key) {
-  ui.activeMark = key;
-  syncMarks();
-}
-
-function placeMarks(locate, width) {
-  const taken = [];
-  // Backwards, so the current question's label gets first pick of the space.
-  for (const mark of [...marks].reverse()) {
-    mark.group.style.display = ui.showDims || mark.active ? '' : 'none';
-    const [a, b = a] = mark.entry.at.map(locate);
-    for (const line of [mark.halo, mark.line]) {
-      line.setAttribute('x1', a.x);
-      line.setAttribute('y1', a.y);
-      line.setAttribute('x2', b.x);
-      line.setAttribute('y2', b.y);
-    }
-    [a, b].slice(0, mark.ends.length).forEach((point, index) => {
-      mark.ends[index].setAttribute('cx', point.x);
-      mark.ends[index].setAttribute('cy', point.y);
-    });
-    // The label continues past the line's end so it doesn't cover what's being measured.
-    const length = Math.hypot(b.x - a.x, b.y - a.y);
-    const along = length ? { x: (b.x - a.x) / length, y: (b.y - a.y) / length } : { x: 1, y: 0 };
-    const roomRight = b.x + 12 * along.x < width - 190;
-    const labelX = b.x + 12 * along.x;
-    const labelY = b.y + 12 * along.y + 4;
-    mark.text.setAttribute('x', labelX);
-    mark.text.setAttribute('y', labelY);
-    mark.text.setAttribute('text-anchor', along.x >= 0 && roomRight ? 'start' : 'end');
-    const box = mark.text.getBBox();
-    let shift = 0;
-    const hits = (other) => box.x < other.x + other.width && other.x < box.x + box.width
-      && box.y + shift < other.y + other.height && other.y < box.y + shift + box.height;
-    while (taken.some(hits)) shift += box.height + 6;
-    taken.push({ x: box.x, y: box.y + shift, width: box.width, height: box.height });
-    mark.text.setAttribute('y', labelY + shift);
-    mark.leader.style.display = shift ? '' : 'none';
-    mark.leader.setAttribute('x1', b.x);
-    mark.leader.setAttribute('y1', b.y);
-    mark.leader.setAttribute('x2', labelX);
-    mark.leader.setAttribute('y2', labelY + shift - 4);
+function syncMark() {
+  const key = ui.currentQuestion;
+  const entry = key && ui.state.params[key];
+  if (!entry?.at || entry.show !== ui.file) {
+    mark = null;
+    marksLayer.replaceChildren();
+    return;
   }
+  const group = svg('g', { class: 'mark', 'data-key': key });
+  const halo = svg('line', { class: 'halo' });
+  const line = svg('line', { class: 'span' });
+  const ends = entry.at.map(() => svg('circle', { r: 4.5 }));
+  const text = svg('text');
+  text.textContent = markLabel(key, entry);
+  group.append(halo, line, ...ends, text);
+  marksLayer.replaceChildren(group);
+  mark = { entry, halo, line, ends, text };
+}
+
+function placeMark(locate, width) {
+  if (!mark) return;
+  const [a, b = a] = mark.entry.at.map(locate);
+  for (const line of [mark.halo, mark.line]) {
+    line.setAttribute('x1', a.x);
+    line.setAttribute('y1', a.y);
+    line.setAttribute('x2', b.x);
+    line.setAttribute('y2', b.y);
+  }
+  [a, b].slice(0, mark.ends.length).forEach((point, index) => {
+    mark.ends[index].setAttribute('cx', point.x);
+    mark.ends[index].setAttribute('cy', point.y);
+  });
+  // The label continues past the line's end so it doesn't cover what's being measured.
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  const along = length ? { x: (b.x - a.x) / length, y: (b.y - a.y) / length } : { x: 1, y: 0 };
+  const roomRight = b.x + 12 * along.x < width - 190;
+  mark.text.setAttribute('x', b.x + 12 * along.x);
+  mark.text.setAttribute('y', b.y + 12 * along.y + 4);
+  mark.text.setAttribute('text-anchor', along.x >= 0 && roomRight ? 'start' : 'end');
 }
 
 function placeOverlay() {
@@ -384,7 +360,7 @@ function placeOverlay() {
   const locate = (p) => (photo
     ? { x: image.left - frame.left + p[0] * image.width, y: image.top - frame.top + p[1] * image.height }
     : toScreen(p));
-  placeMarks(locate, frame.width);
+  placeMark(locate, frame.width);
   for (const node of pins.values()) {
     const at = locate(node.__position);
     node.style.left = `${at.x}px`;
@@ -638,6 +614,7 @@ function nextUnanswered(afterKey) {
 function goToQuestion(key) {
   ui.currentQuestion = key;
   renderCarousel();
+  syncMark();
 }
 
 function questionNode(key, entry, position, total) {
@@ -736,7 +713,6 @@ function renderCarousel() {
   if (ui.askedKey !== key) {
     ui.askedKey = key;
     if (entry.show && entry.show !== ui.file) selectFile(entry.show);
-    setActiveMark(key);
   }
 }
 
@@ -981,7 +957,7 @@ function renderAll() {
   renderLitter();
   renderChecks();
   renderStage();
-  syncMarks();
+  syncMark();
 }
 
 async function runCheck() {

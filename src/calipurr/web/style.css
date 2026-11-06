@@ -80,15 +80,10 @@ button{font:inherit;color:var(--ink);cursor:pointer}
 #overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);padding:20px;text-align:center}
 #marks{position:absolute;inset:0;width:100%;height:100%}
-.mark .halo{stroke:#1d1d24;stroke-width:4;opacity:.5}
-.mark .span{stroke:#fff;stroke-width:1.5}
-.mark .leader{stroke:#fbf8f1;stroke-width:1;stroke-dasharray:2 2}
-.mark circle{fill:#fff;stroke:#1d1d24;stroke-width:1}
-.mark text{font:600 11px system-ui;fill:#1d1d24;paint-order:stroke;stroke:#fbf8f1;stroke-width:3px;stroke-linejoin:round;pointer-events:auto;cursor:pointer}
-.mark.active .halo{stroke-width:6;opacity:.75}
-.mark.active .span{stroke:#ffd83d;stroke-width:3}
-.mark.active circle{fill:#ffd83d}
-.mark.active text{font-size:14px;font-weight:700;stroke:#ffd83d;stroke-width:5px}
+.mark .halo{stroke:#1d1d24;stroke-width:6;opacity:.75}
+.mark .span{stroke:#ffd83d;stroke-width:3}
+.mark circle{fill:#ffd83d;stroke:#1d1d24;stroke-width:1}
+.mark text{font:700 14px system-ui;fill:#1d1d24;paint-order:stroke;stroke:#ffd83d;stroke-width:5px;stroke-linejoin:round}
 .pin{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;padding:0;border-radius:50%;background:var(--red);border:2px solid #fff;color:#fff;font:700 11px system-ui;box-shadow:0 0 8px 2px #c8362f88;pointer-events:none}
 .stage.pointing .pin{pointer-events:auto;cursor:pointer}
 .dimlabel{position:absolute;transform:translate(-50%,-50%);font:600 12px ui-monospace,monospace;background:#fbf8f1d9;padding:0 4px;border-radius:4px;white-space:nowrap}

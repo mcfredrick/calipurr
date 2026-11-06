@@ -222,6 +222,8 @@ def test_photo_can_be_marked_with_dots(app):
     page.wait_for_selector(".pin")
     u, v = project.dots()[0]["position"]
     assert u == pytest.approx(0.25, abs=0.02) and v == pytest.approx(0.5, abs=0.02)
+    # Pins are positioned on the next animation frame.
+    page.wait_for_function("document.querySelector('.pin').style.left !== ''")
     pin = page.locator(".pin").bounding_box()
     assert pin["x"] + pin["width"] / 2 == pytest.approx(box["x"] + box["width"] * 0.25, abs=3)
 
@@ -325,53 +327,47 @@ def test_polling_keeps_a_half_typed_answer_and_still_shows_agent_changes(app):
     assert page.evaluate("document.activeElement.id") == "q-bore"
 
 
-def test_questions_mark_their_dimension_and_bring_up_the_picture(app):
+def test_only_the_current_questions_dimension_is_drawn_on_its_picture(app):
     page, project = app
     (project.root / "photos").mkdir()
     (project.root / "photos" / "side.png").write_bytes(blank_png(200, 100))
     project.meow("width", "Width", "Measure it", show="photos/side.png", at=[[0.25, 0.5], [0.75, 0.5]])
-    project.meow("across", "Across", "Measure it", show="photos/side.png", at=[[0.25, 0.5], [0.75, 0.5]])
+    project.meow("across", "Across", "Measure it", show="photos/side.png", at=[[0.25, 0.8], [0.75, 0.8]])
     project.meow("top", "Top", "On the block", show="block.stl", at=[[0, 0, 20]])
+    project.meow("feel", "Feel", "Any notes?", kind="text")
 
-    page.wait_for_selector('.mark.active[data-key="width"]')
+    page.wait_for_selector('.mark[data-key="width"]')
     assert page.input_value("#file") == "photos/side.png"
-    page.wait_for_function("document.getElementById('photoimg').naturalWidth === 200")
+    page.wait_for_function("(i => i.complete && i.getBoundingClientRect().width > 0)(document.getElementById('photoimg'))")
+    page.wait_for_timeout(100)
     image = page.locator("#photoimg").bounding_box()
     stage = page.locator("#stage").bounding_box()
-    line = page.locator('.mark[data-key="width"] .span')
+    line = page.locator(".mark .span")
     x1, x2 = (float(line.get_attribute(a)) for a in ("x1", "x2"))
     assert x1 == pytest.approx(image["x"] - stage["x"] + image["width"] * 0.25, abs=1)
     assert x2 == pytest.approx(image["x"] - stage["x"] + image["width"] * 0.75, abs=1)
+    assert page.locator(".mark").count() == 1
 
-    # Labels of marks that end in the same place stay readable.
-    def glyph_box(key):
-        return page.locator(f'.mark[data-key="{key}"] text').evaluate(
-            "(n) => { const b = n.getBBox(); return [b.y, b.y + b.height]; }"
-        )
-
-    (top_a, bottom_a), (top_b, bottom_b) = glyph_box("width"), glyph_box("across")
-    assert bottom_a <= top_b or bottom_b <= top_a
-
-    # Marks on other pictures stay off this one.
-    assert page.locator('.mark[data-key="top"]').count() == 0
-
-    # The highlight follows the question within one picture, and across to the next.
+    # Moving on swaps the dimension on the same picture, and brings up the next picture when it differs.
     page.fill("#question input[type=number]", "30")
     page.click("#question .primary")
-    page.wait_for_selector('.mark.active[data-key="across"]')
-    assert page.locator(".mark.active").count() == 1
+    page.wait_for_selector('.mark[data-key="across"]')
+    assert page.locator(".mark").count() == 1
     page.click("button[aria-label='Next question']")
-    page.wait_for_selector('.mark.active[data-key="top"]')
-    assert page.input_value("#file") == "block.stl"
+    page.wait_for_selector('.mark[data-key="top"]')
+    assert page.input_value("#file") == "block.stl" and page.locator(".mark").count() == 1
 
-    # Clicking a label on the picture goes to its question, and the mark shows the answer.
+    # A question with no picture draws nothing, and looking at another file hides the mark.
+    page.click("button[aria-label='Next question']")
+    wait_for_question(page, "Feel")
+    assert page.locator(".mark").count() == 0
+
+    # Going back to an answered question shows its answer on the mark.
     page.click(".chip:has-text('Width')")
-    page.wait_for_selector('.mark.active[data-key="width"]')
-    assert page.text_content('.mark[data-key="width"] text') == "Width: 30 mm"
-    page.wait_for_function("(i => i.complete && i.getBoundingClientRect().width > 0)(document.getElementById('photoimg'))")
-    page.wait_for_timeout(100)
-    page.locator('.mark[data-key="across"] text').click(force=True)
-    wait_for_question(page, "Across")
+    page.wait_for_selector('.mark[data-key="width"]')
+    assert page.text_content(".mark text") == "Width: 30 mm"
+    page.select_option("#file", "block.stl")
+    page.wait_for_selector(".mark", state="detached")
 
 
 def test_picture_and_question_stay_in_view_with_many_questions(app):
