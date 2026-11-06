@@ -406,8 +406,10 @@ def test_unclear_lengths_are_refused(raw, unit):
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 16
 
 
-def test_photos_stay_with_their_question_through_answers_and_rewording(project):
+def test_photos_and_notes_stay_with_their_question_through_answers_and_rewording(project):
     project.meow("back", "Back", "What does it look like?", kind="text")
+    project.comment("back", "  See the groove  ")
+    assert project.hungry() == {"back": "What does it look like?"}
     name = project.add_photo("../../evil.txt", PNG, "back")
     assert name == "photos/evil.png" and (project.root / name).read_bytes() == PNG
     assert project.add_photo("evil.png", PNG, "back") == "photos/evil-2.png"
@@ -415,6 +417,9 @@ def test_photos_stay_with_their_question_through_answers_and_rewording(project):
     project.meow("back", "Back", "Reworded", kind="text")
     project.forget("back")
     assert project.params()["back"]["photos"] == [name, "photos/evil-2.png"]
+    assert project.params()["back"]["comment"] == "See the groove"
+    project.comment("back", " ")
+    assert "comment" not in project.params()["back"]
     project.discard(name)
     assert project.params()["back"]["photos"] == ["photos/evil-2.png"]
 

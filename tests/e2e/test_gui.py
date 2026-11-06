@@ -442,3 +442,24 @@ def test_inches_with_fractions_are_saved_as_millimeters(app):
     assert project.params()["length"]["note"] == "Entered as 16 1/8 in."
     # The next question starts in the unit the user just chose.
     assert page.input_value('#question select[aria-label="Unit"]') == "in"
+
+
+def test_a_note_saves_without_answering_and_survives_a_direct_click_on_save(app):
+    page, project = app
+    project.meow("back", "Board back", "How deep is the groove?")
+    project.meow("other", "Other", "And this?")
+    wait_for_question(page, "Board back")
+    page.fill(".qnote", "The groove is on the left in my photo")
+    page.fill("#q-back", "3")
+    # Clicking Save takes focus off the note first, which is when the note saves.
+    page.fill(".qnote", "The groove is on the left of my photo")
+    page.click("#question .primary")
+    wait_for_question(page, "Other")
+    entry = project.params()["back"]
+    assert (entry["value"], entry["comment"]) == (3.0, "The groove is on the left of my photo")
+    page.fill(".qnote", "Not sure yet")
+    page.locator("#question .ask").click()
+    page.wait_for_function("document.querySelector('.qnote').value === 'Not sure yet'")
+    page.wait_for_timeout(300)
+    assert project.params()["other"]["comment"] == "Not sure yet"
+    assert project.params()["other"]["status"] == "needed"

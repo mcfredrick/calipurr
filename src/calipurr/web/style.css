@@ -30,6 +30,7 @@ header small{color:#c9c5ba}
 .answer{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:6px 0}
 .answer input[inputmode=decimal],.answer textarea,.answer select{font:inherit;padding:6px 8px;border:1px solid #b9b19c;border-radius:8px;background:#fff}
 .answer input[inputmode=decimal]{width:120px}
+.qnote{display:block;width:100%;font:inherit;font-size:13px;padding:6px 8px;margin:6px 0;border:1px solid #b9b19c;border-radius:8px;background:#fff;resize:vertical}
 .photos{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}
 .photos button{padding:0;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer;line-height:0}
 .photos img{width:56px;height:56px;object-fit:cover;border-radius:5px}

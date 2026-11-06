@@ -33,6 +33,7 @@ That opens Emily's visual interface in your browser. It only listens on your own
 | Dinner bell | Send to agent | Tells a waiting agent your turn is done |
 | Yarn ball | Rotate | Turn the model |
 | Photo drop | Add a photo | Drop a JPG, PNG, WebP or GIF anywhere on the page to attach it to the current question. Your agent can open it |
+| Question note | Note for your agent | Write anything beside an answer, such as what a photo shows. A note doesn't count as the answer |
 | Laser dot | Point at this | Pin a comment to a spot on a model or photo. Click a dot again or use its x to remove it |
 | Paw | Pick a step | Click the gauge step that fit |
 | Report card | Test results | Records which step fit and what it measured |

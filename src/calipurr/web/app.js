@@ -90,6 +90,7 @@ const ui = {
   viewedStage: null,
   drafts: { measured: '', material: '', note: '' },
   answerDrafts: new Map(),
+  noteDrafts: new Map(),
 };
 
 // 3D view
@@ -622,6 +623,22 @@ function photoList(entry) {
   return h('div', { class: 'photos' }, ...thumbs, h('label', { class: 'addphoto' }, input, 'Add a photo (or drop one anywhere)'));
 }
 
+function noteBox(key, entry) {
+  const box = h('textarea', { rows: 2, class: 'qnote', 'aria-label': 'Note for your agent', placeholder: 'Note for your agent (optional). Explain a photo, or anything else.', value: ui.noteDrafts.get(key) ?? entry.comment ?? '' });
+  box.addEventListener('input', () => ui.noteDrafts.set(key, box.value));
+  box.addEventListener('change', async () => {
+    const text = box.value;
+    try {
+      await post('/api/params/comment', { key, text });
+      if (ui.noteDrafts.get(key) === text) ui.noteDrafts.delete(key);
+      await refresh(true);
+    } catch (error) {
+      toast(error.message);
+    }
+  });
+  return box;
+}
+
 function badge(entry) {
   const optional = entry.status === 'needed' && entry.required === false;
   return h('span', { class: `badge ${optional ? 'optional' : entry.status}` }, optional ? 'optional' : entry.status);
@@ -727,6 +744,7 @@ function questionNode(key, entry, position, total) {
       seePicture,
       clear),
     status ? gaugeForm(key, entry) : null,
+    noteBox(key, entry),
     photoList(entry));
 }
 
@@ -760,7 +778,8 @@ function renderCarousel() {
   const entry = ui.state.params[key];
   $('chips').replaceChildren(...params.map(([k, e]) => chipNode(k, e)));
   // Redrawing the same question would wipe a half-typed answer.
-  const shown = JSON.stringify([key, entry, open]);
+  // Saving a note must not redraw either: the click that moved focus off it would land on a replaced button.
+  const shown = JSON.stringify([key, { ...entry, comment: undefined }, open]);
   if (ui.shownQuestion !== shown) {
     ui.shownQuestion = shown;
     $('question').replaceChildren(questionNode(key, entry, params.findIndex(([k]) => k === key) + 1, params.length));

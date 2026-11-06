@@ -83,6 +83,8 @@ class App:
         self.project = project
         self.rebuilder = Rebuilder(build, project.root)
         self.check_cache: dict = {}
+        # Requests arrive on separate threads, and each one reads params.toml, changes it and writes it back.
+        self.write_lock = threading.Lock()
 
     def state(self) -> dict:
         machines = {}
@@ -125,6 +127,9 @@ class App:
                 result = project.answer(body["key"], value, body.get("status", "measured"), body.get("note"))
             self.rebuilder.request()
             return result
+        if route == "/api/params/comment":
+            project.comment(body["key"], str(body["text"]))
+            return {}
         if route == "/api/bell":
             project.ring()
             return {}
@@ -242,7 +247,9 @@ def _handler(app: App, port_holder: dict) -> type[BaseHTTPRequestHandler]:
                 self._json({"error": "That photo is over 50 MB. Export a smaller copy."}, HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
                 return
             try:
-                name = app.project.add_photo(query.get("name", ["photo"])[0], self.rfile.read(length), query.get("key", [None])[0])
+                data = self.rfile.read(length)
+                with app.write_lock:
+                    name = app.project.add_photo(query.get("name", ["photo"])[0], data, query.get("key", [None])[0])
                 self._json({"result": {"file": name}})
             except Hiss as err:
                 self._json({"error": str(err)}, HTTPStatus.BAD_REQUEST)
@@ -267,7 +274,9 @@ def _handler(app: App, port_holder: dict) -> type[BaseHTTPRequestHandler]:
                 return
             try:
                 body = json.loads(self.rfile.read(length) or b"{}")
-                self._json({"result": app.post(urlparse(self.path).path, body)})
+                with app.write_lock:
+                    result = app.post(urlparse(self.path).path, body)
+                self._json({"result": result})
             except NeedsConfirmation as err:
                 self._json({"error": str(err), "needs_confirmation": True}, HTTPStatus.CONFLICT)
             except KeyError as err:

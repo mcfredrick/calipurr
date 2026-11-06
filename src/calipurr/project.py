@@ -36,8 +36,9 @@ LURK_STALE_S = 5
 LURK_POLL_S = 0.5
 NUMBER, TEXT, CHOICE = "number", "text", "choice"
 ANSWERED = "answered"
-# photos is the user's own: what they attached to a question, kept when the question changes.
-QUESTION_FIELDS = ("name", "ask", "unit", "kind", "choices", "why", "required", "show", "at", "photos")
+# What the user adds beside an answer. It stays when the question or its answer changes.
+USER_FIELDS = ("photos", "comment")
+QUESTION_FIELDS = ("name", "ask", "unit", "kind", "choices", "why", "required", "show", "at", *USER_FIELDS)
 MM_PER_INCH = 25.4
 LENGTH_UNITS = {"mm": "mm", "millimeter": "mm", "millimeters": "mm", "in": "in", "inch": "in", "inches": "in", '"': "in", "\u201d": "in"}
 PHOTO_SIGNATURES = ((b"\xff\xd8\xff", ".jpg"), (b"\x89PNG\r\n\x1a\n", ".png"), (b"GIF8", ".gif"))
@@ -153,14 +154,14 @@ class Project:
                 self._check_position(show, point)
         params = self.params()
         entry = params.get(key, {"status": NEEDED})
-        photos = entry.get("photos")
+        kept = {k: entry[k] for k in USER_FIELDS if k in entry}
         stale = entry.get("kind", NUMBER) != kind or (choices and entry.get("value") not in choices)
         if stale:
             entry = {"status": NEEDED}
         for field in QUESTION_FIELDS:
             entry.pop(field, None)
         entry.update(name=name, ask=ask, unit=unit, kind=kind, required=required)
-        entry.update({k: v for k, v in (("choices", choices), ("why", why), ("show", show), ("at", at), ("photos", photos)) if v})
+        entry.update({k: v for k, v in (("choices", choices), ("why", why), ("show", show), ("at", at)) if v}, **kept)
         params[key] = entry
         self._save_params(params)
         return entry
@@ -191,6 +192,17 @@ class Project:
         params[key] = entry
         self._save_params(params)
         return entry
+
+    def comment(self, key: str, text: str) -> None:
+        """Save the user's note on a question. It never counts as the answer."""
+        params = self.params()
+        if key not in params:
+            raise Hiss(f"No question named {key}")
+        if text.strip():
+            params[key]["comment"] = text.strip()
+        else:
+            params[key].pop("comment", None)
+        self._save_params(params)
 
     def add_photo(self, filename: str, data: bytes, key: str | None = None) -> str:
         """Save a picture from the user into photos/, attached to a question if one is named."""
